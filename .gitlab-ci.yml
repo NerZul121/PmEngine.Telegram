@@ -1,0 +1,28 @@
+stages:
+  - build
+  - deploy
+
+build-job:
+  only:
+    - main
+  image: mcr.microsoft.com/dotnet/sdk:7.0
+  stage: build
+  tags:
+    - main
+  script:
+    - dotnet nuget add source http://87.249.53.45:5555/v3/index.json
+    - dotnet build ./PmEngine.Telegram
+    - dotnet pack ./PmEngine.Telegram
+    - cd PmEngine.Telegram/bin/Debug/
+    - ls
+    - dotnet nuget push -s http://87.249.53.45:5555/v3/index.json -k cdb8e592e5878ef6e2eb9c9643534230 *.nupkg
+  dependencies: []
+
+deploy-job:
+  stage: deploy
+  only:
+    - main
+  tags:
+    - main
+  script:
+    - ls
