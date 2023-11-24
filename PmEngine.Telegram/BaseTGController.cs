@@ -173,6 +173,8 @@ namespace PmEngine.Telegram
             var callbackQuery = update.CallbackQuery ?? throw new Exception("Пустой CallbackQuery");
             var chatId = update.CallbackQuery.Message?.Chat.Id ?? 0;
 
+            logger.LogInformation($"New callback from {chatId}: {callbackQuery}");
+
             if (session is null)
                 return;
 
