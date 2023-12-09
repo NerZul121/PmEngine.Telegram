@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using PmEngine.Core.BaseClasses;
 using PmEngine.Core.Interfaces;
+using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
-using Telegram.Bot;
 
 namespace PmEngine.Telegram
 {
@@ -30,6 +30,24 @@ namespace PmEngine.Telegram
             services.AddHostedService<ConfigureWebhook>();
 
             return services;
+        }
+    }
+
+    public class TelegramRegistrator : IContentRegistrator
+    {
+        public TelegramRegistrator(IEngineConfigurator config)
+        {
+            config.Properties.DefaultOutputSetter.Add((user) =>
+            {
+                return user.TelegramData() is not null ? user.GetOutput<ITelegramOutput>() : null;
+            });
+        }
+
+        public int Priority { get; set; } = 0;
+
+        public Task Registrate()
+        {
+            return Task.CompletedTask;
         }
     }
 }
