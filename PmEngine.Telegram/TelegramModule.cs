@@ -27,7 +27,7 @@ namespace PmEngine.Telegram
                 conf(telegramconf);
 
             services.AddSingleton<ITelegramOutputConfigure>(telegramconf);
-            services.AddScoped(typeof(IContentRegistrator), typeof(TelegramRegistrator));
+            services.AddSingleton<IContentRegistrator, TelegramRegistrator>();
             services.AddHostedService<ConfigureWebhook>();
 
             return services;
