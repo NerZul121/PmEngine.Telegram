@@ -177,7 +177,7 @@ namespace PmEngine.Telegram
             }
             try
             {
-                if (file.EndsWith(".jpg"))
+                if (!file.Contains("=="))
                     using (var stream = new FileStream(Storage + file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                         await action(new InputFileStream(stream, file.Split('\\').Last()));
                 else
