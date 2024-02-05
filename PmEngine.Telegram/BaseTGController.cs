@@ -207,6 +207,7 @@ namespace PmEngine.Telegram
             }
 
             wrapper.Arguments.InputMessageId(messageId);
+            wrapper.Arguments.CallbackQuery(callbackQuery);
 
             if (wrapper.ActionType is not null)
                 await processor.ActionProcess(wrapper, session, wrapper.Arguments);
