@@ -93,7 +93,6 @@ namespace PmEngine.Telegram
             {
                 if (update.CallbackQuery != null && !String.IsNullOrEmpty(update.CallbackQuery.Data))
                 {
-                    await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                     await InlineButtonProcess(update, session, client, logger, serviceProvider);
                     return false;
                 }
@@ -211,6 +210,8 @@ namespace PmEngine.Telegram
 
             if (wrapper.ActionType is not null)
                 await processor.ActionProcess(wrapper, session, wrapper.Arguments);
+
+            await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool?>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)
