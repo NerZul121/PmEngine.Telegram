@@ -121,7 +121,7 @@ namespace PmEngine.Telegram
                 if (session.InputAction != null)
                 {
                     session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
-                    await processor.ActionProcess(session.InputAction, session, session.InputAction.Arguments);
+                    await processor.ActionProcess(session.InputAction, session);
                 }
 
                 return true;
@@ -134,7 +134,7 @@ namespace PmEngine.Telegram
                 if (session.InputAction != null)
                 {
                     session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
-                    await processor.ActionProcess(session.InputAction, session, session.InputAction.Arguments);
+                    await processor.ActionProcess(session.InputAction, session);
                 }
 
                 return true;
@@ -148,7 +148,7 @@ namespace PmEngine.Telegram
             if (act is not null)
             {
                 act.Arguments.InputMessageId(update.Message.MessageId);
-                await processor.ActionProcess(act, session, act.Arguments);
+                await processor.ActionProcess(act, session);
                 return true;
             }
             else if (msg.Text.StartsWith("/"))
@@ -160,7 +160,7 @@ namespace PmEngine.Telegram
             else if (session.InputAction != null)
             {
                 session.InputAction.Arguments.Set("inputData", msg.Text);
-                await processor.ActionProcess(session.InputAction, session, session.InputAction.Arguments);
+                await processor.ActionProcess(session.InputAction, session);
                 return true;
             }
 
@@ -209,7 +209,7 @@ namespace PmEngine.Telegram
             wrapper.Arguments.CallbackQuery(callbackQuery);
 
             if (wrapper.ActionType is not null)
-                await processor.ActionProcess(wrapper, session, wrapper.Arguments);
+                await processor.ActionProcess(wrapper, session);
 
             await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool?>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
         }
