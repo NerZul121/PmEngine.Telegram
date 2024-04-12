@@ -65,7 +65,7 @@ namespace PmEngine.Telegram
             }
         }
 
-        public async Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, IActionArguments? additionals = null, long? chatId = null)
+        public async Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
@@ -128,7 +128,7 @@ namespace PmEngine.Telegram
             return messageId;
         }
 
-        public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, IActionArguments? additionals = null, long? chatId = null)
+        public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
@@ -204,12 +204,12 @@ namespace PmEngine.Telegram
             }
         }
 
-        public Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, IActionArguments? additionals = null)
+        public Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null)
         {
             return ShowContent(content, nextActions, media, additionals, _userData.Owner.ChatId());
         }
 
-        public Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, IActionArguments? additionals = null)
+        public Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null)
         {
             return EditContent(messageId, content, nextActions, media, additionals, _userData.Owner.ChatId());
         }

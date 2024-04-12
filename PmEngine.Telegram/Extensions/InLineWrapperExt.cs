@@ -8,7 +8,7 @@ namespace PmEngine.Telegram.Extensions
 {
     public static class InLineWrapperExt
     {
-        public static string ToInLineModel(this IActionWrapper wrapper)
+        public static string ToInLineModel(this ActionWrapper wrapper)
         {
             var model = new InlineWrapperModel();
             model.ActionTypeName = wrapper.ActionType?.ToString();
@@ -28,13 +28,13 @@ namespace PmEngine.Telegram.Extensions
             return new InlineWrapperModel() { ActionTypeName = args[0], MessageActionId = int.Parse(args[1]), Argument = long.Parse(args[2]) };
         }
 
-        public static IActionWrapper? ToWrapper(this InlineWrapperModel? model, IServiceProvider services)
+        public static ActionWrapper? ToWrapper(this InlineWrapperModel? model, IServiceProvider services)
         {
             if (model is null)
                 return null;
 
             var at = services.GetServices<IAction>().FirstOrDefault(a => a.GetType().ToString() == model.ActionTypeName)?.GetType();
-            var args = new ActionArguments();
+            var args = new Core.Arguments();
 
             if (model.MessageActionId == -1)
                 model.MessageActionId = (int)services.GetRequiredService<ITelegramOutputConfigure>().DefaultInLineMessageAction;

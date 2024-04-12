@@ -1,8 +1,6 @@
-﻿using PmEngine.Core;
-
-namespace PmEngine.Telegram
+﻿namespace PmEngine.Telegram
 {
-    public class TelegramOutputArguments : ActionArguments
+    public class TelegramOutputArguments : Core.Arguments
     {
         public int? Theme { get { return Get<int?>("Theme"); } }
     }
