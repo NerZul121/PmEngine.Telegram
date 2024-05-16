@@ -126,9 +126,9 @@ namespace PmEngine.Telegram
                 {
                     session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
                     await processor.ActionProcess(session.InputAction, session);
-                }
 
-                return true;
+                    return true;
+                }
             }
 
             if (msg.Document != null)
@@ -139,9 +139,9 @@ namespace PmEngine.Telegram
                 {
                     session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
                     await processor.ActionProcess(session.InputAction, session);
-                }
 
-                return true;
+                    return true;
+                }
             }
 
             if (String.IsNullOrEmpty(msg.Text))
@@ -151,7 +151,7 @@ namespace PmEngine.Telegram
 
             if (act is not null)
             {
-                act.Arguments.InputMessageId(update.Message.MessageId);
+                act.Arguments.InputMessageId(msg.MessageId);
                 await processor.ActionProcess(act, session);
                 return true;
             }
