@@ -145,7 +145,13 @@ namespace PmEngine.Telegram
             }
 
             if (String.IsNullOrEmpty(msg.Text))
+            {
+                foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+                    if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
+                        return true;
+
                 return false;
+            }
 
             var act = stringed.FirstOrDefault(a => a.DisplayName == msg.Text);
 
