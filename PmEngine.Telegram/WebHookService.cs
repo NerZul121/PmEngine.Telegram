@@ -27,10 +27,10 @@ namespace PmEngine.Telegram
 
             var webhookAddress = @$"{_hostUrl}/TGBot/{_botToken}";
             _logger.LogInformation($"Setting webhook: {webhookAddress}");
-            await botClient.SetWebhookAsync(
+            /*await botClient.SetWebhookAsync(
                 url: webhookAddress,
                 allowedUpdates: Array.Empty<UpdateType>(),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken);*/
 
             _logger.LogInformation($"Бот запущен! {_botToken} на {_hostUrl}");
         }
@@ -41,8 +41,8 @@ namespace PmEngine.Telegram
             var botClient = scope.ServiceProvider.GetRequiredService<ITelegramBotClient>();
 
             // Remove webhook upon app shutdown
-            _logger.LogInformation("Removing webhook");
-            await botClient.DeleteWebhookAsync(cancellationToken: cancellationToken);
+            _logger.LogInformation("Removing webhook");/*
+            await botClient.DeleteWebhookAsync(cancellationToken: cancellationToken);*/
         }
     }
 }

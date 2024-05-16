@@ -86,6 +86,10 @@ namespace PmEngine.Telegram
 
         public virtual async Task<bool> UserProcess(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
         {
+            foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+                if (await s.BeforeProcessUpdate(update, session, client, logger, serviceProvider))
+                    return true;
+
             var msg = update.Message;
             UserRightsVerify(session);
 
@@ -163,6 +167,10 @@ namespace PmEngine.Telegram
                 await processor.ActionProcess(session.InputAction, session);
                 return true;
             }
+
+            foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+                if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
+                    return true;
 
             return false;
         }
