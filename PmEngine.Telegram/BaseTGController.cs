@@ -153,7 +153,9 @@ namespace PmEngine.Telegram
                 return false;
             }
 
-            var act = stringed.FirstOrDefault(a => a.DisplayName == msg.Text);
+            var text = serviceProvider.GetRequiredService<ITelegramOutputConfigure>().ParseInputEntities ? Tg.TextWithEntities(msg.Text, msg.Entities) : msg.Text;
+
+            var act = stringed.FirstOrDefault(a => a.DisplayName == text);
 
             if (act is not null)
             {
@@ -161,15 +163,15 @@ namespace PmEngine.Telegram
                 await processor.ActionProcess(act, session);
                 return true;
             }
-            else if (msg.Text.StartsWith("/"))
+            else if (text.StartsWith("/"))
             {
                 var cmdmngr = serviceProvider.GetServices<IManager>().First(m => m.GetType() == typeof(CommandManager)) as CommandManager;
-                await cmdmngr.DoCommand(msg.Text, session);
+                await cmdmngr.DoCommand(text, session);
                 return true;
             }
             else if (session.InputAction != null)
             {
-                session.InputAction.Arguments.Set("inputData", msg.Text);
+                session.InputAction.Arguments.Set("inputData", text);
                 await processor.ActionProcess(session.InputAction, session);
                 return true;
             }

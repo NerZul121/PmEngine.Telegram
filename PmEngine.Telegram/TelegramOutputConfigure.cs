@@ -7,5 +7,6 @@ namespace PmEngine.Telegram
     {
         public string? ApiURL { get; set; }
         public MessageActionType DefaultInLineMessageAction { get; set; } = new();
+        public bool ParseInputEntities { get; set; } = true;
     }
 }
