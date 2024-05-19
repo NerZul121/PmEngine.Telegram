@@ -87,8 +87,14 @@ namespace PmEngine.Telegram
         public virtual async Task<bool> UserProcess(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
         {
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+            {
+                logger.LogInformation($"CustomLogic before: {s.GetType()} - processing");
                 if (await s.BeforeProcessUpdate(update, session, client, logger, serviceProvider))
+                {
+                    logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
                     return true;
+                }
+            }
 
             var msg = update.Message;
             UserRightsVerify(session);
@@ -147,8 +153,14 @@ namespace PmEngine.Telegram
             if (String.IsNullOrEmpty(msg.Text))
             {
                 foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+                {
+                    logger.LogInformation($"CustomLogic after: {s.GetType()} - processing");
                     if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
+                    {
+                        logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
                         return true;
+                    }
+                }
 
                 return false;
             }
@@ -177,8 +189,14 @@ namespace PmEngine.Telegram
             }
 
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
+            {
+                logger.LogInformation($"CustomLogic after: {s.GetType()} - processing");
                 if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
+                {
+                    logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
                     return true;
+                }
+            }
 
             return false;
         }
