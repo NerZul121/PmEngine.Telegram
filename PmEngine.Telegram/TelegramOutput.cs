@@ -2,6 +2,7 @@
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
+using System.Text.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -70,11 +71,26 @@ namespace PmEngine.Telegram
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
 
+            var replyMarkup = GetReplyMarkup(nextActions);
+
+            // Если тут json, то пробуем через update
+            if (content.StartsWith("{"))
+            {
+                try
+                {
+                    var update = JsonSerializer.Deserialize<Update>(content);
+                    if (update is not null)
+                    {
+                        var model = new SendMessageModel(update, _client);
+                        return await model.Send(chatId.Value, replyMarkup);
+                    }
+                }
+                catch { }
+            }
+
             var messageId = -1;
 
             var theme = additionals?.Get<int?>("Theme");
-
-            var replyMarkup = GetReplyMarkup(nextActions);
 
             if (media is null || !media.Any())
             {
