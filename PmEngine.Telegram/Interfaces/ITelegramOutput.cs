@@ -11,5 +11,6 @@ namespace PmEngine.Telegram.Interfaces
         public Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null);
         public Task PinMessage(int messageId, bool pin = true, long? chatId = null);
         public Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null);
+        public Task<int> Send(SendMessageModel model, INextActionsMarkup? nextActions = null);
     }
 }

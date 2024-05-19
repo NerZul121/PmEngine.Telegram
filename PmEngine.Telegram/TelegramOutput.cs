@@ -70,23 +70,11 @@ namespace PmEngine.Telegram
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
 
-            IReplyMarkup? replyMarkup = null;
             var messageId = -1;
 
             var theme = additionals?.Get<int?>("Theme");
 
-            if (nextActions != null)
-            {
-                if (nextActions.GetFloatNextActions().Any())
-                {
-                    if (nextActions.InLine)
-                        replyMarkup = new InlineKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => a is WebAppActionWrapper ? InlineKeyboardButton.WithWebApp(a.DisplayName, new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url }) : (a is UrlActionWrapper ? InlineKeyboardButton.WithUrl(a.DisplayName, ((UrlActionWrapper)a).Url) : InlineKeyboardButton.WithCallbackData(a.DisplayName, a.ToInLineModel())))));
-                    else
-                        replyMarkup = new ReplyKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => new KeyboardButton(a.DisplayName) { WebApp = a is WebAppActionWrapper ? new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url } : null }))) { ResizeKeyboard = true };
-                }
-                else
-                    replyMarkup = new ReplyKeyboardRemove();
-            }
+            var replyMarkup = GetReplyMarkup(nextActions);
 
             if (media is null || !media.Any())
             {
@@ -126,6 +114,24 @@ namespace PmEngine.Telegram
             }
 
             return messageId;
+        }
+
+        private static IReplyMarkup? GetReplyMarkup(INextActionsMarkup? nextActions)
+        {
+            if (nextActions != null)
+            {
+                if (nextActions.GetFloatNextActions().Any())
+                {
+                    if (nextActions.InLine)
+                        return new InlineKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => a is WebAppActionWrapper ? InlineKeyboardButton.WithWebApp(a.DisplayName, new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url }) : (a is UrlActionWrapper ? InlineKeyboardButton.WithUrl(a.DisplayName, ((UrlActionWrapper)a).Url) : InlineKeyboardButton.WithCallbackData(a.DisplayName, a.ToInLineModel())))));
+                    else
+                        return new ReplyKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => new KeyboardButton(a.DisplayName) { WebApp = a is WebAppActionWrapper ? new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url } : null }))) { ResizeKeyboard = true };
+                }
+                else
+                    return new ReplyKeyboardRemove();
+            }
+
+            return null;
         }
 
         public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
@@ -217,6 +223,15 @@ namespace PmEngine.Telegram
         public Task DeleteMessage(int messageId)
         {
             return DeleteMessage(messageId, _userData.Owner.ChatId());
+        }
+
+        public async Task<int> Send(SendMessageModel model, INextActionsMarkup? nextActions = null)
+        {
+            var chatId = _userData.Owner.ChatId();
+            if (chatId is null)
+                return -1;
+
+            return await model.Send(chatId.Value, GetReplyMarkup(nextActions));
         }
 
         #region 404
