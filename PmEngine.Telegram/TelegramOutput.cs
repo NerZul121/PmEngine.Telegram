@@ -74,7 +74,7 @@ namespace PmEngine.Telegram
             var replyMarkup = GetReplyMarkup(nextActions);
 
             // Если тут json, то пробуем через update
-            if (content.StartsWith("{"))
+            if (!String.IsNullOrEmpty(content) && content.StartsWith("{"))
             {
                 try
                 {
