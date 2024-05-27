@@ -10,8 +10,9 @@ namespace PmEngine.Telegram
             if (entities is null || text is null)
                 return text;
 
+            List<TagPos> tags = new();
+
             var result = text ?? "";
-            int shift = 0;
 
             foreach (var entity in entities)
             {
@@ -36,13 +37,22 @@ namespace PmEngine.Telegram
                 var startTag = $"<{tag}>";
                 var endTag = $"</{tag.Split(' ').First()}>";
 
-                result = result.Insert(entity.Offset + shift, startTag);
-                shift += startTag.Length;
-                result = result.Insert(entity.Length + entity.Offset + shift, endTag);
-                shift += endTag.Length;
+                var tagPos = new TagPos() { StartPos = entity.Offset, StartLength = startTag.Length, EndPos = entity.Length, EndLength = endTag.Length };
+
+                result = result.Insert(tags.Where(t => t.StartPos <= entity.Offset).Sum(t => t.StartLength) + entity.Offset, startTag);
+                result = result.Insert(tags.Where(t => t.StartPos <= entity.Offset).Sum(t => t.StartLength) + tags.Where(t => t.EndPos <= entity.Length).Sum(t => t.EndLength) + entity.Length + entity.Offset + startTag.Length, endTag);
+                tags.Add(tagPos);
             }
 
             return result;
         }
+    }
+
+    class TagPos
+    {
+        public int StartPos { get; set; }
+        public int StartLength { get; set; }
+        public int EndPos { get; set; }
+        public int EndLength { get; set; }
     }
 }
