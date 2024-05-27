@@ -37,10 +37,19 @@ namespace PmEngine.Telegram
                 var startTag = $"<{tag}>";
                 var endTag = $"</{tag.Split(' ').First()}>";
 
-                var tagPos = new TagPos() { StartPos = entity.Offset, StartLength = startTag.Length, EndPos = entity.Length, EndLength = endTag.Length };
+                var tagPos = new TagPos() { StartPos = entity.Offset, StartLength = startTag.Length, EndPos = entity.Offset + entity.Length, EndLength = endTag.Length };
+                if (tags.Any(t => t.StartPos == tagPos.StartPos && t.EndPos == tagPos.EndPos && t.Type == tagPos.Type))
+                    continue;
 
-                result = result.Insert(tags.Where(t => t.StartPos <= entity.Offset).Sum(t => t.StartLength) + entity.Offset, startTag);
-                result = result.Insert(tags.Where(t => t.StartPos <= entity.Offset).Sum(t => t.StartLength) + tags.Where(t => t.EndPos <= entity.Length).Sum(t => t.EndLength) + entity.Length + entity.Offset + startTag.Length, endTag);
+                var startOffset = tags.Where(t => t.StartPos <= entity.Offset + entity.Length).Sum(t => t.StartLength) + entity.Offset;
+                var endOffset = tags.Where(t => t.StartPos <= entity.Offset + entity.Length).Sum(t => t.StartLength);
+                endOffset += tags.Where(t => t.EndPos <= tagPos.EndPos).Sum(t => t.EndLength);
+                endOffset += entity.Length;
+                endOffset += entity.Offset;
+                endOffset += startTag.Length;
+
+                result = result.Insert(startOffset, startTag);
+                result = result.Insert(endOffset, endTag);
                 tags.Add(tagPos);
             }
 
@@ -54,5 +63,6 @@ namespace PmEngine.Telegram
         public int StartLength { get; set; }
         public int EndPos { get; set; }
         public int EndLength { get; set; }
+        public MessageEntityType Type { get; set; }
     }
 }
