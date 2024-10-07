@@ -27,8 +27,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-		<PackageReference Include="PmEngine.Core" Version="1.88.519.1754" />
+		<PackageReference Include="PmEngine.Core" Version="1.88.1007.1852" />
 		<PackageReference Include="RamjotSingh.EmojiNet" Version="0.1.0" />
 		<PackageReference Include="Telegram.Bot" Version="19.0.0" />
 	</ItemGroup>

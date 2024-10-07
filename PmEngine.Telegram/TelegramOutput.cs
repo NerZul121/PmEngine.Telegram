@@ -1,5 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
+using PmEngine.Telegram.Daemons;
+using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
 using System.Text.Json;
@@ -18,17 +22,22 @@ namespace PmEngine.Telegram
         private ITelegramBotClient _client { get; set; }
 
         private IUserScopeData _userData;
+        private bool _useQueue;
+
+        private IServiceProvider _services;
 
         /// <summary>
         /// Инициализация аутпата
         /// </summary>
         /// <param name="logger">логгер</param>
         /// <param name="client">телеграммный клиент</param>
-        public TelegramOutput(ILogger logger, ITelegramBotClient client, IUserScopeData userData)
+        public TelegramOutput(ILogger logger, ITelegramBotClient client, IUserScopeData userData, ITelegramOutputConfigure config, IServiceProvider services)
         {
             _logger = logger;
             _client = client;
             _userData = userData;
+            _useQueue = config.UseQueue;
+            _services = services;
         }
 
         public async Task PinMessage(int messageId, bool pin = true, long? chatId = null)
@@ -71,6 +80,34 @@ namespace PmEngine.Telegram
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
 
+            if (_useQueue && additionals is not null && !additionals.Get<bool>("IgnoreQueue"))
+            {
+                var message = new MessageQueueEntity()
+                {
+                    Text = content,
+                    Actions = nextActions is null ? null : JsonConvert.SerializeObject(nextActions),
+                    Media = media is null ? null : JsonConvert.SerializeObject(media),
+                    Arguments = additionals is null ? null : JsonConvert.SerializeObject(additionals),
+                    ForChatId = chatId ?? -1
+                };
+
+                await _services.InContext(async ctx =>
+                {
+                    ctx.Add(message);
+                    await ctx.SaveChangesAsync();
+                });
+
+                int id = 0;
+
+                while(!MessagesQueueDaemon.SendedMessages.TryGetValue(message.Id, out id))
+                    await Task.Delay(33);
+
+                MessagesQueueDaemon.SendedMessages.Remove(message.Id, out _);
+
+                return id;
+            }
+
+
             var replyMarkup = GetReplyMarkup(nextActions);
 
             // Если тут json, то пробуем через update
@@ -78,7 +115,7 @@ namespace PmEngine.Telegram
             {
                 try
                 {
-                    var update = JsonSerializer.Deserialize<Update>(content);
+                    var update = System.Text.Json.JsonSerializer.Deserialize<Update>(content);
                     if (update is not null)
                     {
                         var model = new SendMessageModel(update, _client);

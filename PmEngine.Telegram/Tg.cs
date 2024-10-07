@@ -41,7 +41,7 @@ namespace PmEngine.Telegram
                 if (tags.Any(t => t.StartPos == tagPos.StartPos && t.EndPos == tagPos.EndPos && t.Type == tagPos.Type))
                     continue;
 
-                var startOffset = tags.Where(t => t.StartPos <= entity.Offset + entity.Length).Sum(t => t.StartLength) + entity.Offset;
+                var startOffset = tags.Where(t => t.StartPos <= entity.Offset + entity.Length).Sum(t => t.StartLength) + tags.Where(t => t.EndPos <= entity.Offset + entity.Length).Sum(t => t.EndLength) + entity.Offset;
                 var endOffset = tags.Where(t => t.StartPos <= entity.Offset + entity.Length).Sum(t => t.StartLength);
                 endOffset += tags.Where(t => t.EndPos <= tagPos.EndPos).Sum(t => t.EndLength);
                 endOffset += entity.Length;

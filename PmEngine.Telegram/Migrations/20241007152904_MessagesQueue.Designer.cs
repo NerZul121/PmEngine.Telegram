@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PmEngine.Telegram;
@@ -11,9 +12,11 @@ using PmEngine.Telegram;
 namespace PmEngine.Telegram.Migrations
 {
     [DbContext(typeof(TelegramContext))]
-    partial class TelegramMigrationContextModelSnapshot : ModelSnapshot
+    [Migration("20241007152904_MessagesQueue")]
+    partial class MessagesQueue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,11 +55,8 @@ namespace PmEngine.Telegram.Migrations
 
             modelBuilder.Entity("PmEngine.Telegram.Entities.MessageQueueEntity", b =>
                 {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    b.Property<decimal>("Id")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Actions")
                         .HasColumnType("text");
@@ -64,7 +64,7 @@ namespace PmEngine.Telegram.Migrations
                     b.Property<string>("Arguments")
                         .HasColumnType("text");
 
-                    b.Property<long>("ForChatId")
+                    b.Property<long>("ForUserId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Media")
