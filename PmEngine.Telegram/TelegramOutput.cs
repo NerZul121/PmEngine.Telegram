@@ -136,7 +136,7 @@ namespace PmEngine.Telegram
             }
 
             if (media.Count() == 1)
-                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhotoAsync(chatId, fs, replyMarkup: replyMarkup, caption: content, disableNotification: true, replyToMessageId: theme, parseMode: ParseMode.Html)).MessageId);
+                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhotoAsync(chatId, fs, replyMarkup: replyMarkup, caption: content, replyToMessageId: theme, parseMode: ParseMode.Html)).MessageId);
             else
             {
                 var files = media.Select(m => m.ToString()).Select(s => s.StartsWith("fileUID") ? new InputMediaPhoto(new InputFileId(s.Replace("fileUID:", ""))) : s.StartsWith("http") ? new InputMediaPhoto(new InputFileUrl(s)) : null).Where(f => f is not null).ToList();
