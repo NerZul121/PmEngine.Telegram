@@ -245,7 +245,7 @@ namespace PmEngine.Telegram
             if (wrapper.ActionType is not null)
                 await processor.ActionProcess(wrapper, session);
 
-            await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool?>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
+            await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)

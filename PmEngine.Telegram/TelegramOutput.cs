@@ -6,7 +6,6 @@ using PmEngine.Telegram.Daemons;
 using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
-using System.Text.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -131,12 +130,12 @@ namespace PmEngine.Telegram
 
             if (media is null || !media.Any())
             {
-                messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, replyToMessageId: theme, parseMode: ParseMode.Html)).MessageId;
+                messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
                 return messageId;
             }
 
             if (media.Count() == 1)
-                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhotoAsync(chatId, fs, replyMarkup: replyMarkup, caption: content, replyToMessageId: theme, parseMode: ParseMode.Html)).MessageId);
+                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhotoAsync(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
             else
             {
                 var files = media.Select(m => m.ToString()).Select(s => s.StartsWith("fileUID") ? new InputMediaPhoto(new InputFileId(s.Replace("fileUID:", ""))) : s.StartsWith("http") ? new InputMediaPhoto(new InputFileUrl(s)) : null).Where(f => f is not null).ToList();
@@ -157,7 +156,7 @@ namespace PmEngine.Telegram
                 if (files.Any())
                     messageId = (await _client.SendMediaGroupAsync(chatId, files)).Last().MessageId;
                 if (!String.IsNullOrEmpty(content))
-                    messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, replyToMessageId: theme, parseMode: ParseMode.Html)).MessageId;
+                    messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
 
                 foreach (var str in streams)
                 {

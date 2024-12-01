@@ -68,7 +68,7 @@ namespace PmEngine.Telegram
 
             if (update.Message.Poll is not null)
             {
-                _sendF = (chatId, markup) => bot.SendPollAsync(chatId, update.Message.Poll.Question, update.Message.Poll.Options.Select(o => o.Text), type: update.Message.Poll.Type.ToLower() == "quiz" ? PollType.Quiz : PollType.Regular, isAnonymous: update.Message.Poll.IsAnonymous, allowsMultipleAnswers: update.Message.Poll.AllowsMultipleAnswers, correctOptionId: update.Message.Poll.CorrectOptionId, replyMarkup: markup);
+                _sendF = (chatId, markup) => bot.SendPollAsync(chatId, update.Message.Poll.Question, update.Message.Poll.Options.Select(o => new InputPollOption(o.Text)), type: update.Message.Poll.Type.ToLower() == "quiz" ? PollType.Quiz : PollType.Regular, isAnonymous: update.Message.Poll.IsAnonymous, allowsMultipleAnswers: update.Message.Poll.AllowsMultipleAnswers, correctOptionId: update.Message.Poll.CorrectOptionId, replyMarkup: markup);
                 return;
             }
 

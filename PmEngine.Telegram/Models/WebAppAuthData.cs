@@ -8,6 +8,7 @@ namespace PmEngine.Telegram.Models
         public User user { get; set; }
         public int auth_date { get; set; }
         public string hash { get; set; }
+        public string signature { get; set; }
     }
 
     public class User

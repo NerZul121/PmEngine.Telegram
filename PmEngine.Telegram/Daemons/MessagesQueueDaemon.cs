@@ -62,6 +62,7 @@ namespace PmEngine.Telegram.Daemons
 
                             message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals);
                             message.Status = "Sended";
+                            ctx.Remove(message);
                         }
                     }
                     catch (Exception ex)
