@@ -42,7 +42,7 @@ namespace PmEngine.Telegram
         public async Task PinMessage(int messageId, bool pin = true, long? chatId = null)
         {
             if (chatId == null)
-                chatId = _userData.Owner.ChatId();
+                chatId = _userData.Owner.TGID();
 
             if (pin)
                 await _client.PinChatMessage(chatId, messageId);
@@ -76,9 +76,6 @@ namespace PmEngine.Telegram
 
         public async Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
-            if (chatId == null)
-                chatId = _userData.Owner.ChatId();
-
             if (_useQueue && additionals is not null && !additionals.Get<bool>("IgnoreQueue"))
             {
                 var message = new MessageQueueEntity()
@@ -86,9 +83,13 @@ namespace PmEngine.Telegram
                     Text = content,
                     Actions = nextActions is null ? null : JsonConvert.SerializeObject(nextActions),
                     Media = media is null ? null : JsonConvert.SerializeObject(media),
-                    Arguments = additionals is null ? null : JsonConvert.SerializeObject(additionals),
-                    ForChatId = chatId ?? -1
+                    Arguments = additionals is null ? null : JsonConvert.SerializeObject(additionals)
                 };
+
+                if (chatId is null)
+                    message.ForUserTgId = _userData.Owner.TGID();
+                else
+                    message.ForChatTgId = chatId;
 
                 await _services.InContext(async ctx =>
                 {
@@ -98,7 +99,7 @@ namespace PmEngine.Telegram
 
                 int id = 0;
 
-                while(!MessagesQueueDaemon.SendedMessages.TryGetValue(message.Id, out id))
+                while (!MessagesQueueDaemon.SendedMessages.TryGetValue(message.Id, out id))
                     await Task.Delay(33);
 
                 MessagesQueueDaemon.SendedMessages.Remove(message.Id, out _);
@@ -106,6 +107,8 @@ namespace PmEngine.Telegram
                 return id;
             }
 
+            if (chatId == null)
+                chatId = _userData.Owner.TGID();
 
             var replyMarkup = GetReplyMarkup(nextActions);
 
@@ -189,7 +192,7 @@ namespace PmEngine.Telegram
         public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
             if (chatId == null)
-                chatId = _userData.Owner.ChatId();
+                chatId = _userData.Owner.TGID();
 
             InlineKeyboardMarkup? replyMarkup = null;
             var theme = additionals?.Get<int?>("Theme");
@@ -210,7 +213,7 @@ namespace PmEngine.Telegram
         public async Task DeleteMessage(int messageId, long? chatId = null)
         {
             if (chatId == null)
-                chatId = _userData.Owner.ChatId();
+                chatId = _userData.Owner.TGID();
 
             await _client.DeleteMessage(chatId, messageId);
         }
@@ -264,22 +267,22 @@ namespace PmEngine.Telegram
 
         public Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null)
         {
-            return ShowContent(content, nextActions, media, additionals, _userData.Owner.ChatId());
+            return ShowContent(content, nextActions, media, additionals, _userData.Owner.TGID());
         }
 
         public Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null)
         {
-            return EditContent(messageId, content, nextActions, media, additionals, _userData.Owner.ChatId());
+            return EditContent(messageId, content, nextActions, media, additionals, _userData.Owner.TGID());
         }
 
         public Task DeleteMessage(int messageId)
         {
-            return DeleteMessage(messageId, _userData.Owner.ChatId());
+            return DeleteMessage(messageId, _userData.Owner.TGID());
         }
 
         public async Task<int> Send(SendMessageModel model, INextActionsMarkup? nextActions = null)
         {
-            var chatId = _userData.Owner.ChatId();
+            var chatId = _userData.Owner.TGID();
             if (chatId is null)
                 return -1;
 

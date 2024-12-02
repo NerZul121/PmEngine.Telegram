@@ -5,7 +5,8 @@ namespace PmEngine.Telegram.Entities
     public class MessageQueueEntity : IDataEntity
     {
         public long Id { get; set; }
-        public long ForChatId { get; set; }
+        public long? ForUserTgId { get; set; }
+        public long? ForChatTgId { get; set; }
         public string? Text { get; set; }
         public string? Actions { get; set; }
         public string? Media { get; set; }

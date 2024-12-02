@@ -8,6 +8,7 @@ using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Interfaces;
+using Telegram.Bot;
 
 namespace PmEngine.Telegram.Daemons
 {
@@ -16,11 +17,13 @@ namespace PmEngine.Telegram.Daemons
         public static int MaxCountPerSec = 30;
         public static Dictionary<long, int> SendedMessages = new();
         private bool _enabled;
+        private ITelegramOutput _fakeOutput;
 
         public MessagesQueueDaemon(IServiceProvider services, ILogger logger, ITelegramOutputConfigure config) : base(services, logger)
         {
             _enabled = config.UseQueue;
             DelayInSec = _enabled ? 1 : 999;
+            _fakeOutput = new TelegramOutput(_logger, _services.GetRequiredService<ITelegramBotClient>(), null, _services.GetRequiredService<ITelegramOutputConfigure>(), _services);
         }
 
         public async override Task Work()
@@ -37,8 +40,6 @@ namespace PmEngine.Telegram.Daemons
                     ctx.Attach(message);
                     try
                     {
-                        var tgUser = await ctx.Set<TelegramUserEntity>().AsNoTracking().Include(t => t.Owner).FirstAsync(u => u.ChatId == message.ForChatId);
-                        var us = await _services.GetRequiredService<IServerSession>().GetUserSession(tgUser.Owner.Id);
                         var additionals = String.IsNullOrEmpty(message.Arguments) ? new Core.Arguments() : JsonConvert.DeserializeObject<Core.Arguments>(message.Arguments) ?? new Core.Arguments();
                         additionals.Set("IgnoreQueue", true);
                         INextActionsMarkup? actions = null;
@@ -60,7 +61,17 @@ namespace PmEngine.Telegram.Daemons
                                 }
                             }
 
-                            message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals);
+                            if (message.ForChatTgId is not null)
+                            {
+                                message.MessageId = await _fakeOutput.ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals, message.ForChatTgId);
+                            }
+                            if (message.ForUserTgId is not null)
+                            {
+                                var tgUser = await ctx.Set<TelegramUserEntity>().AsNoTracking().Include(t => t.Owner).FirstAsync(u => u.TGID == message.ForUserTgId);
+                                var us = await _services.GetRequiredService<IServerSession>().GetUserSession(tgUser.Owner.Id);
+                                message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals);
+                            }
+
                             message.Status = "Sended";
                             ctx.Remove(message);
                         }

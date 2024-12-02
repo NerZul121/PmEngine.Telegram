@@ -7,11 +7,6 @@ namespace PmEngine.Telegram.Extensions
 {
     public static class SessionExtension
     {
-        public static long? ChatId(this IUserSession userSession)
-        {
-            return userSession.TelegramData()?.ChatId;
-        }
-
         public static long? TGID(this IUserSession userSession)
         {
             return userSession.TelegramData()?.TGID;

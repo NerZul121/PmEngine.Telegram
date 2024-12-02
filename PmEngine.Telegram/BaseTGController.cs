@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.Json;
 using PmEngine.Telegram.Encoders;
 using PmEngine.Telegram.Entities;
+using PmEngine.Core.Extensions;
 
 namespace PmEngine.Telegram
 {
@@ -32,10 +33,7 @@ namespace PmEngine.Telegram
 
             try
             {
-                if (msg is not null)
-                    tgUser = await GetOrCreateUser(update.Message.Chat.Id, update.Message.From.Id, serviceProvider);
-                else if (update.CallbackQuery is not null)
-                    tgUser = await GetOrCreateUser(update.CallbackQuery.From.Id, update.CallbackQuery.From.Id, serviceProvider);
+                tgUser = await GetOrCreateUser(update, logger, serviceProvider);
 
                 user = tgUser?.Owner;
 
@@ -43,7 +41,20 @@ namespace PmEngine.Telegram
                     return false;
 
                 session = await serviceProvider.GetRequiredService<IServerSession>().GetUserSession(user.Id, u => u.SetDefaultOutput<ITelegramOutput>());
-                return await UserProcess(update, session, client, logger, serviceProvider);
+
+                TaskRunner.Run(async () =>
+                {
+                    try
+                    {
+                        await UserProcess(update, session, client, logger, serviceProvider);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError($"Ошибка обработки апдейта {update.Id}: {ex}");
+                    }
+                });
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -59,17 +70,39 @@ namespace PmEngine.Telegram
                 throw new Exception("Sorry, your account has blocked :(");
         }
 
-        public virtual async Task<TelegramUserEntity> GetOrCreateUser(long chatId, long tgid, IServiceProvider serviceProvider, long? userId = null)
+        public virtual async Task<TelegramUserEntity> GetOrCreateUser(Update update, ILogger logger, IServiceProvider serviceProvider, long? userId = null)
         {
             TelegramUserEntity? tgUser = null;
 
+            var from = update.Message?.From ?? update.CallbackQuery?.From;
+            if (from is null)
+                throw new Exception("Пользователь не определен.");
+
+            var chat = update.Message?.Chat;
+
             await serviceProvider.GetRequiredService<IContextHelper>().InContext(async (context) =>
             {
-                tgUser = await context.Set<TelegramUserEntity>().AsNoTracking().Include(u => u.Owner).FirstOrDefaultAsync(p => p.TGID == tgid);
+                tgUser = await context.Set<TelegramUserEntity>().AsNoTracking().Include(u => u.Owner).FirstOrDefaultAsync(p => p.TGID == from.Id);
+
+                if (chat != null && chat.Id != from.Id)
+                {
+                    var existChat = await context.Set<TelegramChatEntity>().FirstOrDefaultAsync(c => c.ChatId == chat.Id);
+                    if (existChat is null)
+                    {
+                        existChat = new() { ChatId = chat.Id };
+                        context.Add(existChat);
+                    }
+
+                    existChat.ChatTitle = chat.Title;
+                    existChat.ChannelLogin = chat.Username;
+
+                    await context.SaveChangesAsync();
+                }
 
                 if (tgUser is null)
                 {
-                    tgUser = new TelegramUserEntity() { ChatId = chatId, TGID = tgid };
+                    tgUser = new TelegramUserEntity() { TGID = from.Id, Login = from.Username, FirstName = from.FirstName, LastName = from.LastName };
+
                     if (userId is not null)
                         tgUser.Owner = context.Set<UserEntity>().First(u => u.Id == userId);
                     else
@@ -78,10 +111,15 @@ namespace PmEngine.Telegram
                     await context.Set<TelegramUserEntity>().AddAsync(tgUser);
 
                     await context.SaveChangesAsync();
-                    context.Entry(tgUser).State = EntityState.Detached;
+                    return;
                 }
-
-                tgUser = await context.Set<TelegramUserEntity>().AsNoTracking().Include(u => u.Owner).FirstOrDefaultAsync(p => p.TGID == tgid);
+                else
+                {
+                    tgUser.FirstName = from.FirstName;
+                    tgUser.LastName = from.LastName;
+                    tgUser.Login = from.Username;
+                    await context.SaveChangesAsync();
+                }
             });
 
             return tgUser;
@@ -239,7 +277,7 @@ namespace PmEngine.Telegram
             if (model.MessageActionId == 2)
             {
                 var btn = callbackQuery.Message.ReplyMarkup.InlineKeyboard.SelectMany(s => s).First(b => b.CallbackData == callbackQuery.Data);
-                await client.EditMessageTextAsync(session.ChatId(), messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}");
+                await client.EditMessageText(callbackQuery.Message.Chat.Id, messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}");
             }
 
             wrapper.Arguments.InputMessageId(messageId);
@@ -248,7 +286,7 @@ namespace PmEngine.Telegram
             if (wrapper.ActionType is not null)
                 await processor.ActionProcess(wrapper, session);
 
-            await client.AnswerCallbackQueryAsync(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
+            await client.AnswerCallbackQuery(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)
