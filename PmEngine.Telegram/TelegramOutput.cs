@@ -45,9 +45,9 @@ namespace PmEngine.Telegram
                 chatId = _userData.Owner.ChatId();
 
             if (pin)
-                await _client.PinChatMessageAsync(chatId, messageId);
+                await _client.PinChatMessage(chatId, messageId);
             else
-                await _client.UnpinChatMessageAsync(chatId, messageId);
+                await _client.UnpinChatMessage(chatId, messageId);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace PmEngine.Telegram
 
             try
             {
-                var kakish = await _client.GetChatMemberAsync(chatId, userId.Value);
+                var kakish = await _client.GetChatMember(chatId, userId.Value);
                 _logger.LogInformation($"Проверка пользователя {userId} в {chatId}. Результат: {kakish.Status}");
                 return kakish.Status != ChatMemberStatus.Left && kakish.Status != ChatMemberStatus.Kicked;
             }
@@ -130,12 +130,12 @@ namespace PmEngine.Telegram
 
             if (media is null || !media.Any())
             {
-                messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
                 return messageId;
             }
 
             if (media.Count() == 1)
-                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhotoAsync(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
+                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
             else
             {
                 var files = media.Select(m => m.ToString()).Select(s => s.StartsWith("fileUID") ? new InputMediaPhoto(new InputFileId(s.Replace("fileUID:", ""))) : s.StartsWith("http") ? new InputMediaPhoto(new InputFileUrl(s)) : null).Where(f => f is not null).ToList();
@@ -154,9 +154,9 @@ namespace PmEngine.Telegram
                 }
 
                 if (files.Any())
-                    messageId = (await _client.SendMediaGroupAsync(chatId, files)).Last().MessageId;
+                    messageId = (await _client.SendMediaGroup(chatId, files)).Last().MessageId;
                 if (!String.IsNullOrEmpty(content))
-                    messageId = (await _client.SendTextMessageAsync(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                    messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
 
                 foreach (var str in streams)
                 {
@@ -199,12 +199,12 @@ namespace PmEngine.Telegram
                 if (nextActions.InLine)
                 {
                     replyMarkup = new InlineKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => a is WebAppActionWrapper ? InlineKeyboardButton.WithWebApp(a.DisplayName, new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url }) : (a is UrlActionWrapper ? InlineKeyboardButton.WithUrl(a.DisplayName, ((UrlActionWrapper)a).Url) : InlineKeyboardButton.WithCallbackData(a.DisplayName, a.ToInLineModel())))));
-                    await _client.EditMessageTextAsync(chatId, messageId, content, replyMarkup: replyMarkup, parseMode: ParseMode.Html);
+                    await _client.EditMessageText(chatId, messageId, content, replyMarkup: replyMarkup, parseMode: ParseMode.Html);
                     return;
                 }
             }
 
-            await _client.EditMessageTextAsync(chatId, messageId, content, parseMode: ParseMode.Html);
+            await _client.EditMessageText(chatId, messageId, content, parseMode: ParseMode.Html);
         }
 
         public async Task DeleteMessage(int messageId, long? chatId = null)
@@ -212,7 +212,7 @@ namespace PmEngine.Telegram
             if (chatId == null)
                 chatId = _userData.Owner.ChatId();
 
-            await _client.DeleteMessageAsync(chatId, messageId);
+            await _client.DeleteMessage(chatId, messageId);
         }
 
         /// <summary>

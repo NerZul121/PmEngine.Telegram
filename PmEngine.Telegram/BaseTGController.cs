@@ -171,7 +171,7 @@ namespace PmEngine.Telegram
 
             if (act is not null)
             {
-                act.Arguments.InputMessageId(msg.MessageId);
+                act.Arguments.InputMessageId(msg.Id);
                 await processor.ActionProcess(act, session);
                 return true;
             }
@@ -213,7 +213,7 @@ namespace PmEngine.Telegram
 
             var processor = serviceProvider.GetRequiredService<IEngineProcessor>();
 
-            var messageId = update.CallbackQuery.Message.MessageId;
+            var messageId = update.CallbackQuery.Message.Id;
 
             var model = update.CallbackQuery.Data.GetInLineModel();
 

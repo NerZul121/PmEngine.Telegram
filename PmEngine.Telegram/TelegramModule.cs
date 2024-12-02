@@ -28,7 +28,6 @@ namespace PmEngine.Telegram
 
             services.AddSingleton<ITelegramOutputConfigure>(telegramconf);
             services.AddSingleton<IContentRegistrator, TelegramRegistrator>();
-            services.AddHostedService<ConfigureWebhook>();
 
             return services;
         }
