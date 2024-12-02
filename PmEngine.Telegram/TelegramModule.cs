@@ -1,8 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Castle.Core.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using PmEngine.Core.BaseClasses;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace PmEngine.Telegram
 {
@@ -20,6 +24,7 @@ namespace PmEngine.Telegram
     {
         public static IServiceCollection AddTelegramModule(this IServiceCollection services, Action<ITelegramOutputConfigure>? conf = null)
         {
+            services.ConfigureTelegramBotMvc();
             services.AddSingleton<IModuleRegistrator>(new TelegramModule());
             var telegramconf = new TelegramOutputConfigure();
 
@@ -30,6 +35,14 @@ namespace PmEngine.Telegram
             services.AddSingleton<IContentRegistrator, TelegramRegistrator>();
 
             return services;
+        }
+
+        public static async Task SetDefaultTgWebhook(this WebApplication app)
+        {
+            var botController = new BaseTGController();
+            var tgClient = app.Services.GetRequiredService<ITelegramBotClient>();
+            app.MapPost("/bot", (Update update) => botController.Post(update, app.Services));
+            await tgClient.SetWebhook($"{Environment.GetEnvironmentVariable("HOST_URL")}/bot", allowedUpdates: []);
         }
     }
 

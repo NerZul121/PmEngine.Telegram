@@ -20,8 +20,11 @@ namespace PmEngine.Telegram
 {
     public class BaseTGController
     {
-        public virtual async Task<bool> Post(Update update, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
+        public virtual async Task<bool> Post(Update update, IServiceProvider serviceProvider)
         {
+            var client = serviceProvider.GetRequiredService<ITelegramBotClient>();
+            var logger = serviceProvider.GetRequiredService<ILogger>();
+
             var msg = update.Message;
             TelegramUserEntity? tgUser = null;
             UserEntity? user = null;
