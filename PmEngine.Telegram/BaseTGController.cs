@@ -213,6 +213,7 @@ namespace PmEngine.Telegram
             if (act is not null)
             {
                 act.Arguments.InputMessageId(msg.Id);
+                act.Arguments.Set("tgupdate", update);
                 await processor.ActionProcess(act, session);
                 return true;
             }
@@ -225,6 +226,7 @@ namespace PmEngine.Telegram
             else if (session.InputAction != null)
             {
                 session.InputAction.Arguments.Set("inputData", text);
+                session.InputAction.Arguments.Set("tgupdate", update);
                 await processor.ActionProcess(session.InputAction, session);
                 return true;
             }
@@ -256,7 +258,11 @@ namespace PmEngine.Telegram
 
             var messageId = update.CallbackQuery.Message.Id;
 
-            var model = update.CallbackQuery.Data.GetInLineModel();
+            var action = session.NextActions.GetFloatNextActions().FirstOrDefault(a => a.GUID == update.CallbackQuery.Data);
+            if (action is null)
+                return;
+
+            /*var model = update.CallbackQuery.Data.GetInLineModel();
 
             if (model is null)
                 return;
@@ -266,27 +272,28 @@ namespace PmEngine.Telegram
                 return;
 
             if (wrapper.ActionType is null)
-                return;
+                return;*/
 
-            if (model.MessageActionId == -1)
-                model.MessageActionId = (int)serviceProvider.GetRequiredService<ITelegramOutputConfigure>().DefaultInLineMessageAction;
+            var msgActType = action.Arguments.Get<long?>("messageActionId");
+            if (msgActType is null)
+                msgActType = (int)serviceProvider.GetRequiredService<ITelegramOutputConfigure>().DefaultInLineMessageAction;
 
-            if (model.MessageActionId == 1)
+            if (msgActType == 1)
                 await session.GetOutput().DeleteMessage(messageId);
 
-            if (model.MessageActionId == 2)
+            if (msgActType == 2)
             {
                 var btn = callbackQuery.Message.ReplyMarkup.InlineKeyboard.SelectMany(s => s).First(b => b.CallbackData == callbackQuery.Data);
                 await client.EditMessageText(callbackQuery.Message.Chat.Id, messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}");
             }
 
-            wrapper.Arguments.InputMessageId(messageId);
-            wrapper.Arguments.CallbackQuery(callbackQuery);
+            action.Arguments.InputMessageId(messageId);
+            action.Arguments.CallbackQuery(callbackQuery);
 
-            if (wrapper.ActionType is not null)
-                await processor.ActionProcess(wrapper, session);
+            if (action.ActionType is not null)
+                await processor.ActionProcess(action, session);
 
-            await client.AnswerCallbackQuery(update.CallbackQuery.Id, wrapper.Arguments.Get<string?>("callbackText"), wrapper.Arguments.Get<bool>("callbackAlert"), wrapper.Arguments.Get<string?>("callbackUrl"));
+            await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.Get<string?>("callbackText"), action.Arguments.Get<bool>("callbackAlert"), action.Arguments.Get<string?>("callbackUrl"));
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)
