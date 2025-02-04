@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Daemons;
 using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
+using System.Text.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -81,9 +81,9 @@ namespace PmEngine.Telegram
                 var message = new MessageQueueEntity()
                 {
                     Text = content,
-                    Actions = nextActions is null ? null : JsonConvert.SerializeObject(nextActions),
-                    Media = media is null ? null : JsonConvert.SerializeObject(media),
-                    Arguments = additionals is null ? null : JsonConvert.SerializeObject(additionals)
+                    Actions = nextActions is null ? null : JsonSerializer.Serialize(nextActions),
+                    Media = media is null ? null : JsonSerializer.Serialize(media),
+                    Arguments = additionals is null ? null : JsonSerializer.Serialize(additionals)
                 };
 
                 if (chatId is null)

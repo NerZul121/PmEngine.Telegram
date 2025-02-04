@@ -41,8 +41,9 @@ namespace PmEngine.Telegram
         {
             var botController = new BaseTGController();
             var tgClient = app.Services.GetRequiredService<ITelegramBotClient>();
-            app.MapPost("/bot", (Update update) => botController.Post(update, app.Services));
-            await tgClient.SetWebhook($"{Environment.GetEnvironmentVariable("HOST_URL")}/bot", allowedUpdates: []);
+            var guid = Guid.NewGuid();
+            app.MapPost("/bot" + guid, (Update update) => botController.Post(update, app.Services));
+            await tgClient.SetWebhook($"{Environment.GetEnvironmentVariable("HOST_URL")}/bot" + guid);
         }
     }
 

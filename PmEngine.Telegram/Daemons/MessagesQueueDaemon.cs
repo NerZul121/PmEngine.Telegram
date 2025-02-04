@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using PmEngine.Core.BaseMarkups;
 using PmEngine.Core.Daemons;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Interfaces;
+using System.Text.Json;
 using Telegram.Bot;
 
 namespace PmEngine.Telegram.Daemons
@@ -40,36 +40,36 @@ namespace PmEngine.Telegram.Daemons
                     ctx.Attach(message);
                     try
                     {
-                        var additionals = String.IsNullOrEmpty(message.Arguments) ? new Core.Arguments() : JsonConvert.DeserializeObject<Core.Arguments>(message.Arguments) ?? new Core.Arguments();
+                        var additionals = String.IsNullOrEmpty(message.Arguments) ? new Core.Arguments() : JsonSerializer.Deserialize<Core.Arguments>(message.Arguments) ?? new Core.Arguments();
                         additionals.Set("IgnoreQueue", true);
                         INextActionsMarkup? actions = null;
                         if (!string.IsNullOrEmpty(message.Actions))
                         {
                             try
                             {
-                                actions = JsonConvert.DeserializeObject<SingleMarkup>(message.Actions);
+                                actions = JsonSerializer.Deserialize<SingleMarkup>(message.Actions);
                             }
                             catch
                             {
                                 try
                                 {
-                                    actions = JsonConvert.DeserializeObject<LinedMarkup>(message.Actions);
+                                    actions = JsonSerializer.Deserialize<LinedMarkup>(message.Actions);
                                 }
                                 catch
                                 {
-                                    actions = JsonConvert.DeserializeObject<MenueMarkup>(message.Actions);
+                                    actions = JsonSerializer.Deserialize<MenueMarkup>(message.Actions);
                                 }
                             }
 
                             if (message.ForChatTgId is not null)
                             {
-                                message.MessageId = await _fakeOutput.ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals, message.ForChatTgId);
+                                message.MessageId = await _fakeOutput.ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonSerializer.Deserialize<object[]>(message.Media), additionals, message.ForChatTgId);
                             }
                             if (message.ForUserTgId is not null)
                             {
                                 var tgUser = await ctx.Set<TelegramUserEntity>().AsNoTracking().Include(t => t.Owner).FirstAsync(u => u.TGID == message.ForUserTgId);
                                 var us = await _services.GetRequiredService<IServerSession>().GetUserSession(tgUser.Owner.Id);
-                                message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonConvert.DeserializeObject<object[]>(message.Media), additionals);
+                                message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonSerializer.Deserialize<object[]>(message.Media), additionals);
                             }
 
                             message.Status = "Sended";
