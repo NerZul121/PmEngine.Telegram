@@ -234,11 +234,7 @@ namespace PmEngine.Telegram
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
             {
                 logger.LogInformation($"CustomLogic after: {s.GetType()} - processing");
-                if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
-                {
-                    logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
-                    return true;
-                }
+                await s.AfterProcessUpdate(update, session, client, logger, serviceProvider);
             }
 
             return false;

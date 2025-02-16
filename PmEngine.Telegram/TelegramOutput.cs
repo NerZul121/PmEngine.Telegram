@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using PmEngine.Core;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Daemons;
@@ -180,13 +181,23 @@ namespace PmEngine.Telegram
                     if (nextActions.InLine)
                         return new InlineKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => a is WebAppActionWrapper ? InlineKeyboardButton.WithWebApp(a.DisplayName, new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url }) : (a is UrlActionWrapper ? InlineKeyboardButton.WithUrl(a.DisplayName, ((UrlActionWrapper)a).Url) : InlineKeyboardButton.WithCallbackData(a.DisplayName, a.GUID)))));
                     else
-                        return new ReplyKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => new KeyboardButton(a.DisplayName) { WebApp = a is WebAppActionWrapper ? new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url } : null }))) { ResizeKeyboard = true };
+                        return new ReplyKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => GetButton(a)))) { ResizeKeyboard = true };
                 }
                 else
                     return new ReplyKeyboardRemove();
             }
 
             return null;
+        }
+
+        private static KeyboardButton GetButton(ActionWrapper a)
+        {
+            return new KeyboardButton(a.DisplayName)
+            {
+                WebApp = a is WebAppActionWrapper ? new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url } : null,
+                RequestContact = a.Arguments.Get<bool>("tg_RequestContact"),
+                RequestLocation = a.Arguments.Get<bool>("tg_RequestLocation")
+            };
         }
 
         public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)

@@ -14,67 +14,67 @@ namespace PmEngine.Telegram
 
             if (update.Message.VideoNote is not null)
             {
-                _sendF = (chatId, markup) => bot.SendVideoNote(chatId, new InputFileId(update.Message.VideoNote.FileId), replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendVideoNote(chatId, new InputFileId(update.Message.VideoNote.FileId), replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Audio is not null)
             {
-                _sendF = (chatId, markup) => bot.SendAudio(chatId, new InputFileId(update.Message.Audio.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendAudio(chatId, new InputFileId(update.Message.Audio.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Animation is not null)
             {
-                _sendF = (chatid, markup) => bot.SendAnimation(chatid, new InputFileId(update.Message.Animation.FileId), caption: update.Message.Caption, replyMarkup: markup);
+                _sendF = (chatid, markup, threadId) => bot.SendAnimation(chatid, new InputFileId(update.Message.Animation.FileId), caption: update.Message.Caption, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Contact is not null)
             {
-                _sendF = (chatid, markup) => bot.SendContact(chatid, update.Message.Contact.PhoneNumber, update.Message.Contact.FirstName, replyMarkup: markup);
+                _sendF = (chatid, markup, threadId) => bot.SendContact(chatid, update.Message.Contact.PhoneNumber, update.Message.Contact.FirstName, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Voice is not null)
             {
-                _sendF = (chatId, markup) => bot.SendAudio(chatId, new InputFileId(update.Message.Voice.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendAudio(chatId, new InputFileId(update.Message.Voice.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Photo is not null)
             {
-                _sendF = (chatId, markup) => bot.SendPhoto(chatId, new InputFileId(update.Message.Photo.OrderBy(p => p.FileSize).Last().FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendPhoto(chatId, new InputFileId(update.Message.Photo.OrderBy(p => p.FileSize).Last().FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Video is not null)
             {
-                _sendF = (chatId, markup) => bot.SendVideo(chatId, new InputFileId(update.Message.Video.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendVideo(chatId, new InputFileId(update.Message.Video.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Document is not null)
             {
-                _sendF = (chatId, markup) => bot.SendDocument(chatId, new InputFileId(update.Message.Document.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendDocument(chatId, new InputFileId(update.Message.Document.FileId), caption: AddEntitites(update.Message.Caption, update.Message.CaptionEntities), parseMode: ParseMode.Html, replyMarkup: markup);
                 return;
             }
 
             if (update.Message.Location is not null)
             {
-                _sendF = (chatId, markup) => bot.SendLocation(chatId, update.Message.Location.Latitude, update.Message.Location.Latitude, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendLocation(chatId, update.Message.Location.Latitude, update.Message.Location.Latitude, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (update.Message.Poll is not null)
             {
-                _sendF = (chatId, markup) => bot.SendPoll(chatId, update.Message.Poll.Question, update.Message.Poll.Options.Select(o => new InputPollOption(o.Text)), type: update.Message.Poll.Type.ToLower() == "quiz" ? PollType.Quiz : PollType.Regular, isAnonymous: update.Message.Poll.IsAnonymous, allowsMultipleAnswers: update.Message.Poll.AllowsMultipleAnswers, correctOptionId: update.Message.Poll.CorrectOptionId, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendPoll(chatId, update.Message.Poll.Question, update.Message.Poll.Options.Select(o => new InputPollOption(o.Text)), type: update.Message.Poll.Type.ToLower() == "quiz" ? PollType.Quiz : PollType.Regular, isAnonymous: update.Message.Poll.IsAnonymous, allowsMultipleAnswers: update.Message.Poll.AllowsMultipleAnswers, correctOptionId: update.Message.Poll.CorrectOptionId, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
 
             if (!String.IsNullOrEmpty(update.Message.Text))
             {
-                _sendF = (chatId, markup) => bot.SendMessage(chatId, AddEntitites(update.Message.Text, update.Message.Entities) ?? "pozor", entities: update.Message.Entities, parseMode: ParseMode.Html, replyMarkup: markup);
+                _sendF = (chatId, markup, threadId) => bot.SendMessage(chatId, AddEntitites(update.Message.Text, update.Message.Entities) ?? "pozor", entities: update.Message.Entities, parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);
                 return;
             }
         }
@@ -84,11 +84,11 @@ namespace PmEngine.Telegram
             return Tg.TextWithEntities(text, entities);
         }
 
-        private Func<long, IReplyMarkup?, Task<Message>> _sendF;
+        private Func<long, IReplyMarkup?, int?, Task<Message>> _sendF;
 
-        public async Task<int> Send(long chatId, IReplyMarkup? markup = null)
+        public async Task<int> Send(long chatId, IReplyMarkup? markup = null, int? threadId = null)
         {
-            return (await _sendF(chatId, markup)).MessageId;
+            return (await _sendF(chatId, markup, threadId)).Id;
         }
     }
 }
