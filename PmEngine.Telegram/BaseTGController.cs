@@ -127,15 +127,19 @@ namespace PmEngine.Telegram
 
         public virtual async Task<bool> UserProcess(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
         {
+            var skip = false;
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
             {
                 logger.LogInformation($"CustomLogic before: {s.GetType()} - processing");
                 if (await s.BeforeProcessUpdate(update, session, client, logger, serviceProvider))
                 {
                     logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
-                    return true;
+                    skip = true;
                 }
             }
+
+            if (skip)
+                return true;
 
             var msg = update.Message;
             UserRightsVerify(session);

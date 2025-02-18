@@ -7,6 +7,7 @@ using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -142,7 +143,7 @@ namespace PmEngine.Telegram
                 await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
             else
             {
-                var files = media.Select(m => m.ToString()).Select(s => s.StartsWith("fileUID") ? new InputMediaPhoto(new InputFileId(s.Replace("fileUID:", ""))) : s.StartsWith("http") ? new InputMediaPhoto(new InputFileUrl(s)) : null).Where(f => f is not null).ToList();
+                var files = media.Select(m => m.ToString()).Select(GetInputFile).Where(f => f is not null).ToList();
 
                 var streams = new List<Stream>();
 
@@ -159,6 +160,7 @@ namespace PmEngine.Telegram
 
                 if (files.Any())
                     messageId = (await _client.SendMediaGroup(chatId, files)).Last().MessageId;
+
                 if (!String.IsNullOrEmpty(content))
                     messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
 
@@ -170,6 +172,33 @@ namespace PmEngine.Telegram
             }
 
             return messageId;
+        }
+
+        private IAlbumInputMedia? GetInputFile(string s)
+        {
+            if (s.StartsWith("fileUID"))
+                return GetFileByUid(s);
+
+            if (s.StartsWith("http"))
+                return new InputMediaPhoto(new InputFileUrl(s));
+
+            return null;
+        }
+
+        private IAlbumInputMedia GetFileByUid(string s)
+        {
+            var uid = s.Replace("fileUID:", "").Split('|').First();
+            var type = s.Split('|').Last().ToLower();
+
+            switch (type)
+            {
+                case "v":
+                    return new InputMediaVideo(new InputFileId(uid));
+                case "d":
+                    return new InputMediaDocument(new InputFileId(uid));
+                default:
+                    return new InputMediaPhoto(new InputFileId(uid));
+            }
         }
 
         private static IReplyMarkup? GetReplyMarkup(INextActionsMarkup? nextActions)
