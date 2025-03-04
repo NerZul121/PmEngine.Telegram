@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PmEngine.Core;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
@@ -7,7 +8,6 @@ using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Interfaces;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -78,6 +78,15 @@ namespace PmEngine.Telegram
 
         public async Task<int> ShowContent(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
+            if (chatId == null)
+            {
+                chatId = _userData.Owner.TGID();
+
+                if (!string.IsNullOrEmpty(content))
+                    foreach (var tr in _services.GetServices<ITextRefactor>())
+                        content = await tr.Refactoring(content, _userData.Owner);
+            }
+
             if (_useQueue && additionals is not null && !additionals.Get<bool>("IgnoreQueue"))
             {
                 var message = new MessageQueueEntity()
@@ -88,10 +97,7 @@ namespace PmEngine.Telegram
                     Arguments = additionals is null ? null : JsonSerializer.Serialize(additionals)
                 };
 
-                if (chatId is null)
-                    message.ForUserTgId = _userData.Owner.TGID();
-                else
-                    message.ForChatTgId = chatId;
+                message.ForChatTgId = chatId;
 
                 await _services.InContext(async ctx =>
                 {
@@ -109,9 +115,6 @@ namespace PmEngine.Telegram
                 return id;
             }
 
-            if (chatId == null)
-                chatId = _userData.Owner.TGID();
-
             var replyMarkup = GetReplyMarkup(nextActions);
 
             // Если тут json, то пробуем через update
@@ -119,7 +122,7 @@ namespace PmEngine.Telegram
             {
                 try
                 {
-                    var update = System.Text.Json.JsonSerializer.Deserialize<Update>(content);
+                    var update = JsonSerializer.Deserialize<Update>(content);
                     if (update is not null)
                     {
                         var model = new SendMessageModel(update, _client);
@@ -140,7 +143,7 @@ namespace PmEngine.Telegram
             }
 
             if (media.Count() == 1)
-                await InFileStream(media.First().ToString(), async (fs) => messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
+                await InFileStream(media.First().ToString(), async (fs) => messageId = media.First().ToString().EndsWith("|v") ? (await _client.SendVideo(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId : (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
             else
             {
                 var files = media.Select(m => m.ToString()).Select(GetInputFile).Where(f => f is not null).ToList();
@@ -201,7 +204,7 @@ namespace PmEngine.Telegram
             }
         }
 
-        private static IReplyMarkup? GetReplyMarkup(INextActionsMarkup? nextActions)
+        private static ReplyMarkup? GetReplyMarkup(INextActionsMarkup? nextActions)
         {
             if (nextActions != null)
             {
@@ -232,7 +235,13 @@ namespace PmEngine.Telegram
         public async Task EditContent(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Core.Arguments? additionals = null, long? chatId = null)
         {
             if (chatId == null)
+            {
                 chatId = _userData.Owner.TGID();
+
+                if (!string.IsNullOrEmpty(content))
+                    foreach (var tr in _services.GetServices<ITextRefactor>())
+                        content = await tr.Refactoring(content, _userData.Owner);
+            }
 
             InlineKeyboardMarkup? replyMarkup = null;
             var theme = additionals?.Get<int?>("Theme");
@@ -267,7 +276,7 @@ namespace PmEngine.Telegram
         {
             if (file.StartsWith("fileUID:"))
             {
-                var uid = file.Replace("fileUID:", "");
+                var uid = file.Replace("fileUID:", "").Split('|').First();
                 await action(new InputFileId(uid));
                 return;
             }

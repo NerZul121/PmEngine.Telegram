@@ -84,9 +84,9 @@ namespace PmEngine.Telegram
             return Tg.TextWithEntities(text, entities);
         }
 
-        private Func<long, IReplyMarkup?, int?, Task<Message>> _sendF;
+        private Func<long, ReplyMarkup?, int?, Task<Message>> _sendF;
 
-        public async Task<int> Send(long chatId, IReplyMarkup? markup = null, int? threadId = null)
+        public async Task<int> Send(long chatId, ReplyMarkup? markup = null, int? threadId = null)
         {
             return (await _sendF(chatId, markup, threadId)).Id;
         }

@@ -32,9 +32,9 @@
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-		<PackageReference Include="PmEngine.Core" Version="1.885.204.1703" />
+		<PackageReference Include="PmEngine.Core" Version="1.886.303.1853" />
 		<PackageReference Include="RamjotSingh.EmojiNet" Version="0.1.0" />
-		<PackageReference Include="Telegram.Bot" Version="22.3.0" />
+		<PackageReference Include="Telegram.Bot" Version="22.4.4" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
