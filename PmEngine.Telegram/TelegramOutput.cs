@@ -163,6 +163,9 @@ namespace PmEngine.Telegram
                     }
                 }
 
+                _userData.Owner.SetLocal("tryupdatechatid", null);
+                _userData.Owner.SetLocal("tryupdatemessageid", null);
+
                 messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
                 return messageId;
             }
