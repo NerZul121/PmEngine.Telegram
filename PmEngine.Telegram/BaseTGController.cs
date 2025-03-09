@@ -287,6 +287,13 @@ namespace PmEngine.Telegram
                 await client.EditMessageText(callbackQuery.Message.Chat.Id, messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}");
             }
 
+            if (msgActType == 3)
+            {
+                var btn = callbackQuery.Message.ReplyMarkup.InlineKeyboard.SelectMany(s => s).First(b => b.CallbackData == callbackQuery.Data);
+                session.SetLocal("tryupdatechatid", callbackQuery.Message.Chat.Id);
+                session.SetLocal("tryupdatemessageid", messageId);
+            }
+
             action.Arguments.InputMessageId(messageId);
             action.Arguments.CallbackQuery(callbackQuery);
 
