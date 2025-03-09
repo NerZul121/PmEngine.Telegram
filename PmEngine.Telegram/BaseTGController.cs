@@ -297,7 +297,7 @@ namespace PmEngine.Telegram
             action.Arguments.InputMessageId(messageId);
             action.Arguments.CallbackQuery(callbackQuery);
 
-            if (action.ActionType is not null)
+            if (action.ActionType is not null || !String.IsNullOrEmpty(action.ActionTypeName))
                 await processor.ActionProcess(action, session);
 
             await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.Get<string?>("callbackText"), action.Arguments.Get<bool>("callbackAlert"), action.Arguments.Get<string?>("callbackUrl"));

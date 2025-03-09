@@ -132,36 +132,37 @@ namespace PmEngine.Telegram
                 catch { }
             }
 
-            var tryupdatechatid = _userData.Owner.GetLocal<long?>("tryupdatechatid");
-
-            if (tryupdatechatid is not null)
-            {
-                try
-                {
-                    var tryupdatemessageid = Convert.ToInt32(_userData.Owner.GetLocal<long?>("tryupdatemessageid"));
-                    await _client.EditMessageText(tryupdatechatid, Convert.ToInt32(tryupdatemessageid), content, ParseMode.Html, replyMarkup: (InlineKeyboardMarkup)replyMarkup);
-                    return tryupdatemessageid;
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        var tryupdatemessageid = Convert.ToInt32(_userData.Owner.GetLocal<long?>("tryupdatemessageid"));
-                        await _client.DeleteMessage(tryupdatechatid, tryupdatemessageid);
-                    }
-                    catch
-                    {
-
-                    }
-                }
-            }
-
             var messageId = -1;
 
             var theme = additionals?.Get<int?>("Theme");
 
             if (media is null || !media.Any())
             {
+                var tryupdatechatid = _userData.Owner.GetLocal<long?>("tryupdatechatid");
+
+                if (tryupdatechatid is not null)
+                {
+                    try
+                    {
+                        var tryupdatemessageid = Convert.ToInt32(_userData.Owner.GetLocal<int?>("tryupdatemessageid"));
+                        await _client.EditMessageText(tryupdatechatid, Convert.ToInt32(tryupdatemessageid), content, ParseMode.Html, replyMarkup: (InlineKeyboardMarkup)replyMarkup);
+                        return tryupdatemessageid;
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            _logger.LogWarning(ex.ToString());
+                            var tryupdatemessageid = Convert.ToInt32(_userData.Owner.GetLocal<int?>("tryupdatemessageid"));
+                            await _client.DeleteMessage(tryupdatechatid, tryupdatemessageid);
+                        }
+                        catch (Exception ex2)
+                        {
+                            _logger.LogError(ex2.ToString());
+                        }
+                    }
+                }
+
                 messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
                 return messageId;
             }
