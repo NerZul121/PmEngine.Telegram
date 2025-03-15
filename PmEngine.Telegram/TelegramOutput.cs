@@ -141,7 +141,7 @@ namespace PmEngine.Telegram
             {
                 var tryupdatechatid = _userData.Owner.GetLocal<long?>("tryupdatechatid");
 
-                if (tryupdatechatid is not null)
+                if (tryupdatechatid is not null && chatId == _userData.Owner.CachedData.Id)
                 {
                     try
                     {
@@ -162,10 +162,10 @@ namespace PmEngine.Telegram
                             _logger.LogError(ex2.ToString());
                         }
                     }
-                }
 
-                _userData.Owner.SetLocal("tryupdatechatid", null);
-                _userData.Owner.SetLocal("tryupdatemessageid", null);
+                    _userData.Owner.SetLocal("tryupdatechatid", null);
+                    _userData.Owner.SetLocal("tryupdatemessageid", null);
+                }
 
                 messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
                 return messageId;
