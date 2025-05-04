@@ -66,12 +66,6 @@ namespace PmEngine.Telegram
                 return;
             }
 
-            if (update.Message.Poll is not null)
-            {
-                _sendF = (chatId, markup, threadId) => bot.SendPoll(chatId, update.Message.Poll.Question, update.Message.Poll.Options.Select(o => new InputPollOption(o.Text)), type: update.Message.Poll.Type.ToLower() == "quiz" ? PollType.Quiz : PollType.Regular, isAnonymous: update.Message.Poll.IsAnonymous, allowsMultipleAnswers: update.Message.Poll.AllowsMultipleAnswers, correctOptionId: update.Message.Poll.CorrectOptionId, replyMarkup: markup, messageThreadId: threadId);
-                return;
-            }
-
             if (!String.IsNullOrEmpty(update.Message.Text))
             {
                 _sendF = (chatId, markup, threadId) => bot.SendMessage(chatId, AddEntitites(update.Message.Text, update.Message.Entities) ?? "pozor", entities: update.Message.Entities, parseMode: ParseMode.Html, replyMarkup: markup, messageThreadId: threadId);

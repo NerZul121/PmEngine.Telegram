@@ -22,15 +22,12 @@ namespace PmEngine.Telegram.Daemons
         public MessagesQueueDaemon(IServiceProvider services, ILogger logger, ITelegramOutputConfigure config) : base(services, logger)
         {
             _enabled = config.UseQueue;
-            DelayInSec = _enabled ? 1 : 999;
+            DelayInSec = 1;
             _fakeOutput = new TelegramOutput(_logger, _services.GetRequiredService<ITelegramBotClient>(), null, _services.GetRequiredService<ITelegramOutputConfigure>(), _services);
         }
 
         public async override Task Work()
         {
-            if (!_enabled)
-                return;
-
             var messages = await _services.InContext(ctx => ctx.Set<MessageQueueEntity>().AsNoTracking().Where(m => m.Status == "Waiting").OrderBy(m => m.Id).Take(MaxCountPerSec).ToArrayAsync());
 
             foreach (var message in messages)

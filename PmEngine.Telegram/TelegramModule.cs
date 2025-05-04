@@ -1,7 +1,4 @@
-﻿using Castle.Core.Logging;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using PmEngine.Core.BaseClasses;
 using PmEngine.Core.Interfaces;
 using PmEngine.Telegram.Extensions;
@@ -9,6 +6,7 @@ using PmEngine.Telegram.Interfaces;
 using System.Text.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Microsoft.AspNetCore.Builder;
 
 namespace PmEngine.Telegram
 {
@@ -34,12 +32,11 @@ namespace PmEngine.Telegram
 
             services.AddSingleton<ITelegramOutputConfigure>(telegramconf);
             services.AddSingleton<IContentRegistrator, TelegramRegistrator>();
-
-            services.ConfigureTelegramBot<Microsoft.AspNetCore.Http.Json.JsonOptions>(opt => opt.SerializerOptions);
+            
             return services;
         }
 
-        public static async Task SetDefaultTgWebhook(this WebApplication app)
+        /*public static async Task SetDefaultTgWebhook(this WebApplication app)
         {
             var botController = new BaseTGController();
             var tgClient = app.Services.GetRequiredService<ITelegramBotClient>();
@@ -50,8 +47,8 @@ namespace PmEngine.Telegram
 
         public static void EnableRecive(this WebApplication app, BaseTGController? controller = null)
         {
-            EnableRecive(app.Services);
-        }
+            EnableRecive(app.Services, controller);
+        }*/
 
         public static void EnableRecive(this IServiceProvider services, BaseTGController? controller = null)
         {

@@ -141,7 +141,7 @@ namespace PmEngine.Telegram
             {
                 var tryupdatechatid = _userData.Owner.GetLocal<long?>("tryupdatechatid");
 
-                if (tryupdatechatid is not null && chatId == _userData.Owner.CachedData.Id)
+                if (tryupdatechatid is not null && chatId == _userData.Owner.TGID())
                 {
                     try
                     {
