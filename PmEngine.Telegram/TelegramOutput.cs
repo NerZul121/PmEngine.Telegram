@@ -172,7 +172,17 @@ namespace PmEngine.Telegram
             }
 
             if (media.Count() == 1)
-                await InFileStream(media.First().ToString(), async (fs) => messageId = media.First().ToString().EndsWith("|v") ? (await _client.SendVideo(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId : (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId);
+                await InFileStream(media.First().ToString(), async (fs) =>
+                {
+                    var format = media.First().ToString().ToLower();
+
+                    if (format.EndsWith("|v") || format.EndsWith(".mp4") || format.EndsWith(".gif"))
+                        messageId = (await _client.SendVideo(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                    else
+                        messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+
+                    return messageId;
+                });
             else
             {
                 var files = media.Select(m => m.ToString()).Select(GetInputFile).Where(f => f is not null).ToList();
