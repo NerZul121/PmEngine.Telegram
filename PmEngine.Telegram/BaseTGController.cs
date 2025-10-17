@@ -8,7 +8,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using PmEngine.Telegram.Extensions;
 using PmEngine.Telegram.Models;
 using System.Security.Cryptography;
 using System.Text;
@@ -16,6 +15,7 @@ using System.Text.Json;
 using PmEngine.Telegram.Encoders;
 using PmEngine.Telegram.Entities;
 using PmEngine.Core.Extensions;
+using PmEngine.Telegram.Args;
 
 namespace PmEngine.Telegram
 {
@@ -40,7 +40,7 @@ namespace PmEngine.Telegram
                 if (tgUser is null || user is null)
                     return false;
 
-                session = await serviceProvider.GetRequiredService<IServerSession>().GetUserSession(user.Id, u => u.SetDefaultOutput<ITelegramOutput>());
+                session = await serviceProvider.GetRequiredService<ServerSession>().GetUserSession(user.Id, null, typeof(TelegramOutput));
 
                 TaskRunner.Run(async () =>
                 {
@@ -106,7 +106,7 @@ namespace PmEngine.Telegram
                     if (userId is not null)
                         tgUser.Owner = context.Set<UserEntity>().First(u => u.Id == userId);
                     else
-                        tgUser.Owner = new();
+                        tgUser.Owner = new() { RegistrationDate = DateTime.Now, LastOnlineDate = DateTime.Now };
 
                     await context.Set<TelegramUserEntity>().AddAsync(tgUser);
 
@@ -163,7 +163,7 @@ namespace PmEngine.Telegram
 
             logger.LogInformation($"New message from {msg.Chat.Id}: {msg.Text}");
 
-            session.SetDefaultOutput<ITelegramOutput>();
+            session.GetOutputOrCreate(typeof(TelegramOutput));
 
             var stringed = session.NextActions is not null ? session.NextActions.NumeredDuplicates().GetFloatNextActions() : Enumerable.Empty<ActionWrapper>();
 
@@ -175,7 +175,7 @@ namespace PmEngine.Telegram
 
                 if (session.InputAction != null)
                 {
-                    session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
+                    session.InputAction.Arguments.As<TgArguments>().FileUID = fileUid;
                     await processor.ActionProcess(session.InputAction, session);
 
                     return true;
@@ -188,7 +188,7 @@ namespace PmEngine.Telegram
 
                 if (session.InputAction != null)
                 {
-                    session.InputAction.Arguments.Set("inputData", "fileUID:" + fileUid);
+                    session.InputAction.Arguments.As<TgArguments>().FileUID = fileUid;
                     await processor.ActionProcess(session.InputAction, session);
 
                     return true;
@@ -216,21 +216,22 @@ namespace PmEngine.Telegram
 
             if (act is not null)
             {
-                act.Arguments.InputMessageId(msg.Id);
-                act.Arguments.Set("tgupdate", update);
+                act.Arguments.As<TgArguments>().ImputMessageId = msg.Id;
+                act.Arguments.As<TgArguments>().Update = update;
                 await processor.ActionProcess(act, session);
                 return true;
             }
             else if (text.StartsWith("/"))
             {
-                var cmdmngr = serviceProvider.GetServices<IManager>().First(m => m.GetType() == typeof(CommandManager)) as CommandManager;
+                var cmdmngr = serviceProvider.GetRequiredService<CommandManager>();
                 await cmdmngr.DoCommand(text, session);
                 return true;
             }
             else if (session.InputAction != null)
             {
-                session.InputAction.Arguments.Set("inputData", text);
-                session.InputAction.Arguments.Set("tgupdate", update);
+                session.InputAction.Arguments.As<TgArguments>().ImputMessageId = msg.Id;
+                session.InputAction.Arguments.As<TgArguments>().Update = update;
+                session.InputAction.Arguments.InputData = text;
                 await processor.ActionProcess(session.InputAction, session);
                 return true;
             }
@@ -258,7 +259,7 @@ namespace PmEngine.Telegram
 
             var messageId = update.CallbackQuery.Message.Id;
 
-            var action = session.NextActions.GetFloatNextActions().FirstOrDefault(a => a.GUID == update.CallbackQuery.Data);
+            var action = session.NextActions?.GetFloatNextActions().FirstOrDefault(a => a.GUID == update.CallbackQuery.Data);
             if (action is null)
                 return;
 
@@ -274,12 +275,12 @@ namespace PmEngine.Telegram
             if (wrapper.ActionType is null)
                 return;*/
 
-            var msgActType = action.Arguments.Get<long?>("messageActionId");
+            var msgActType = action.Arguments.As<TgArguments>().MessageActionId;
             if (msgActType is null)
                 msgActType = (int)serviceProvider.GetRequiredService<ITelegramOutputConfigure>().DefaultInLineMessageAction;
 
             if (msgActType == 1)
-                await session.GetOutput().DeleteMessage(messageId);
+                await session.Output.DeleteMessage(messageId);
 
             if (msgActType == 2)
             {
@@ -294,13 +295,13 @@ namespace PmEngine.Telegram
                 session.SetLocal("tryupdatemessageid", messageId);
             }
 
-            action.Arguments.InputMessageId(messageId);
-            action.Arguments.CallbackQuery(callbackQuery);
+            action.Arguments.As<TgArguments>().ImputMessageId = messageId;
+            action.Arguments.As<TgArguments>().CallbackQuery = callbackQuery;
 
             if (action.ActionType is not null || !String.IsNullOrEmpty(action.ActionTypeName))
                 await processor.ActionProcess(action, session);
 
-            await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.Get<string?>("callbackText"), action.Arguments.Get<bool>("callbackAlert"), action.Arguments.Get<string?>("callbackUrl"));
+            await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.As<TgArguments>().CallbackText, action.Arguments.As<TgArguments>().CallbackAlert, action.Arguments.As<TgArguments>().CallbackURL);
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)

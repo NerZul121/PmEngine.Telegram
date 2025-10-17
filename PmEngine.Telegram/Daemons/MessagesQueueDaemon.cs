@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PmEngine.Core;
 using PmEngine.Core.BaseMarkups;
 using PmEngine.Core.Daemons;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
+using PmEngine.Telegram.Args;
 using PmEngine.Telegram.Entities;
 using PmEngine.Telegram.Interfaces;
 using System.Text.Json;
@@ -17,13 +19,13 @@ namespace PmEngine.Telegram.Daemons
         public static int MaxCountPerSec = 30;
         public static Dictionary<long, int> SendedMessages = new();
         private bool _enabled;
-        private ITelegramOutput _fakeOutput;
+        private TelegramOutput _fakeOutput;
 
         public MessagesQueueDaemon(IServiceProvider services, ILogger logger, ITelegramOutputConfigure config) : base(services, logger)
         {
             _enabled = config.UseQueue;
             DelayInSec = 1;
-            _fakeOutput = new TelegramOutput(_logger, _services.GetRequiredService<ITelegramBotClient>(), null, _services.GetRequiredService<ITelegramOutputConfigure>(), _services);
+            _fakeOutput = new TelegramOutput(null, _logger, _services.GetRequiredService<ITelegramBotClient>(), _services.GetRequiredService<ITelegramOutputConfigure>(), _services);
         }
 
         public async override Task Work()
@@ -37,8 +39,8 @@ namespace PmEngine.Telegram.Daemons
                     ctx.Attach(message);
                     try
                     {
-                        var additionals = String.IsNullOrEmpty(message.Arguments) ? new Core.Arguments() : JsonSerializer.Deserialize<Core.Arguments>(message.Arguments) ?? new Core.Arguments();
-                        additionals.Set("IgnoreQueue", true);
+                        var additionals = String.IsNullOrEmpty(message.Arguments) ? new Arguments() : JsonSerializer.Deserialize<Arguments>(message.Arguments) ?? new Arguments();
+                        additionals.As<TgOutputAdditionals>().IgnoreQueue = true;
                         INextActionsMarkup? actions = null;
                         if (!string.IsNullOrEmpty(message.Actions))
                         {
@@ -65,8 +67,8 @@ namespace PmEngine.Telegram.Daemons
                             if (message.ForUserTgId is not null)
                             {
                                 var tgUser = await ctx.Set<TelegramUserEntity>().AsNoTracking().Include(t => t.Owner).FirstAsync(u => u.TGID == message.ForUserTgId);
-                                var us = await _services.GetRequiredService<IServerSession>().GetUserSession(tgUser.Owner.Id);
-                                message.MessageId = await us.GetOutput<ITelegramOutput>().ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonSerializer.Deserialize<object[]>(message.Media), additionals);
+                                var us = await _services.GetRequiredService<ServerSession>().GetUserSession(tgUser.Owner.Id);
+                                message.MessageId = await us.GetOutputOrCreate(typeof(TelegramOutput)).ShowContent(message.Text ?? "", actions, message.Media is null ? null : JsonSerializer.Deserialize<object[]>(message.Media), additionals);
                             }
 
                             message.Status = "Sended";
