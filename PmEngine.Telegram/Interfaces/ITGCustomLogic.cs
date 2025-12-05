@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using PmEngine.Core.Interfaces;
+using PmEngine.Core.SessionElements;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -19,7 +20,7 @@ namespace PmEngine.Telegram.Interfaces
         /// <param name="logger"></param>
         /// <param name="serviceProvider"></param>
         /// <returns></returns>
-        public Task<bool> BeforeProcessUpdate(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider);
+        public Task<bool> BeforeProcessUpdate(Update update, UserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider);
 
         /// <summary>
         /// Custom processing tg uipdate after main process. If return true - skip all next processes.
@@ -30,6 +31,6 @@ namespace PmEngine.Telegram.Interfaces
         /// <param name="logger"></param>
         /// <param name="serviceProvider"></param>
         /// <returns></returns>
-        public Task<bool> AfterProcessUpdate(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider);
+        public Task<bool> AfterProcessUpdate(Update update, UserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider);
     }
 }

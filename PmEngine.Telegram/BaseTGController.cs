@@ -16,6 +16,7 @@ using PmEngine.Telegram.Encoders;
 using PmEngine.Telegram.Entities;
 using PmEngine.Core.Extensions;
 using PmEngine.Telegram.Args;
+using PmEngine.Core.SessionElements;
 
 namespace PmEngine.Telegram
 {
@@ -24,29 +25,29 @@ namespace PmEngine.Telegram
         public virtual async Task<bool> Post(Update update, IServiceProvider serviceProvider)
         {
             var client = serviceProvider.GetRequiredService<ITelegramBotClient>();
-            var logger = serviceProvider.GetRequiredService<ILogger>();
+            var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<BaseTGController>();
 
             var msg = update.Message;
             TelegramUserEntity? tgUser = null;
             UserEntity? user = null;
-            IUserSession? session;
+            UserSession? session;
 
             try
             {
-                tgUser = await GetOrCreateUser(update, logger, serviceProvider);
+                tgUser = await GetOrCreateUser(update, logger, serviceProvider).ConfigureAwait(false);
 
                 user = tgUser?.Owner;
 
                 if (tgUser is null || user is null)
                     return false;
 
-                session = await serviceProvider.GetRequiredService<ServerSession>().GetUserSession(user.Id, null, typeof(TelegramOutput));
+                session = await serviceProvider.GetRequiredService<ServerSession>().GetUserSession(user.Id, null, typeof(TelegramOutput)).ConfigureAwait(false);
 
                 TaskRunner.Run(async () =>
                 {
                     try
                     {
-                        await UserProcess(update, session, client, logger, serviceProvider);
+                        await UserProcess(update, session, client, logger, serviceProvider).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -64,9 +65,9 @@ namespace PmEngine.Telegram
             return false;
         }
 
-        public virtual void UserRightsVerify(IUserSession user)
+        public virtual void UserRightsVerify(UserSession user)
         {
-            if (user.CachedData.UserType == (int)UserType.Banned)
+            if (user.Permissions.Contains("tg_flag_blocked"))
                 throw new Exception("Sorry, your account has blocked :(");
         }
 
@@ -80,58 +81,55 @@ namespace PmEngine.Telegram
 
             var chat = update.Message?.Chat;
 
-            await serviceProvider.GetRequiredService<IContextHelper>().InContext(async (context) =>
+            using var context = new TelegramContext(serviceProvider.GetRequiredService<PmConfig>());
+
+            tgUser = await context.Set<TelegramUserEntity>().AsNoTracking().Include(u => u.Owner).FirstOrDefaultAsync(p => p.TGID == from.Id).ConfigureAwait(false);
+
+            if (chat != null && chat.Id != from.Id)
             {
-                tgUser = await context.Set<TelegramUserEntity>().AsNoTracking().Include(u => u.Owner).FirstOrDefaultAsync(p => p.TGID == from.Id);
-
-                if (chat != null && chat.Id != from.Id)
+                var existChat = await context.Set<TelegramChatEntity>().FirstOrDefaultAsync(c => c.ChatId == chat.Id).ConfigureAwait(false);
+                if (existChat is null)
                 {
-                    var existChat = await context.Set<TelegramChatEntity>().FirstOrDefaultAsync(c => c.ChatId == chat.Id);
-                    if (existChat is null)
-                    {
-                        existChat = new() { ChatId = chat.Id };
-                        context.Add(existChat);
-                    }
-
-                    existChat.ChatTitle = chat.Title;
-                    existChat.ChannelLogin = chat.Username;
-
-                    await context.SaveChangesAsync();
+                    existChat = new() { ChatId = chat.Id };
+                    context.Add(existChat);
                 }
 
-                if (tgUser is null)
-                {
-                    tgUser = new TelegramUserEntity() { TGID = from.Id, Login = from.Username, FirstName = from.FirstName, LastName = from.LastName };
+                existChat.ChatTitle = chat.Title;
+                existChat.ChannelLogin = chat.Username;
 
-                    if (userId is not null)
-                        tgUser.Owner = context.Set<UserEntity>().First(u => u.Id == userId);
-                    else
-                        tgUser.Owner = new() { RegistrationDate = DateTime.Now, LastOnlineDate = DateTime.Now };
+                await context.SaveChangesAsync().ConfigureAwait(false);
+            }
 
-                    await context.Set<TelegramUserEntity>().AddAsync(tgUser);
+            if (tgUser is null)
+            {
+                tgUser = new TelegramUserEntity() { TGID = from.Id, Login = from.Username, FirstName = from.FirstName, LastName = from.LastName };
 
-                    await context.SaveChangesAsync();
-                    return;
-                }
+                if (userId is not null)
+                    tgUser.Owner = await context.Set<UserEntity>().FirstAsync(u => u.Id == userId).ConfigureAwait(false);
                 else
-                {
-                    tgUser.FirstName = from.FirstName;
-                    tgUser.LastName = from.LastName;
-                    tgUser.Login = from.Username;
-                    await context.SaveChangesAsync();
-                }
-            });
+                    tgUser.Owner = new() { RegistrationDate = DateTime.Now, LastOnlineDate = DateTime.Now };
+
+                await context.Set<TelegramUserEntity>().AddAsync(tgUser);
+                await context.SaveChangesAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                tgUser.FirstName = from.FirstName;
+                tgUser.LastName = from.LastName;
+                tgUser.Login = from.Username;
+                await context.SaveChangesAsync().ConfigureAwait(false);
+            }
 
             return tgUser;
         }
 
-        public virtual async Task<bool> UserProcess(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
+        public virtual async Task<bool> UserProcess(Update update, UserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
         {
             var skip = false;
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
             {
                 logger.LogInformation($"CustomLogic before: {s.GetType()} - processing");
-                if (await s.BeforeProcessUpdate(update, session, client, logger, serviceProvider))
+                if (await s.BeforeProcessUpdate(update, session, client, logger, serviceProvider).ConfigureAwait(false))
                 {
                     logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
                     skip = true;
@@ -148,7 +146,7 @@ namespace PmEngine.Telegram
             {
                 if (update.CallbackQuery != null && !String.IsNullOrEmpty(update.CallbackQuery.Data))
                 {
-                    await InlineButtonProcess(update, session, client, logger, serviceProvider);
+                    await InlineButtonProcess(update, session, client, logger, serviceProvider).ConfigureAwait(false);
                     return false;
                 }
             }
@@ -167,7 +165,7 @@ namespace PmEngine.Telegram
 
             var stringed = session.NextActions is not null ? session.NextActions.NumeredDuplicates().GetFloatNextActions() : Enumerable.Empty<ActionWrapper>();
 
-            var processor = serviceProvider.GetRequiredService<IEngineProcessor>();
+            var processor = serviceProvider.GetRequiredService<IActionProcessor>();
 
             if (msg.Photo != null && msg.Photo.Any())
             {
@@ -176,7 +174,7 @@ namespace PmEngine.Telegram
                 if (session.InputAction != null)
                 {
                     session.InputAction.Arguments.As<TgArguments>().FileUID = fileUid;
-                    await processor.ActionProcess(session.InputAction, session);
+                    await processor.ActionProcess(session.InputAction, session).ConfigureAwait(false);
 
                     return true;
                 }
@@ -189,7 +187,7 @@ namespace PmEngine.Telegram
                 if (session.InputAction != null)
                 {
                     session.InputAction.Arguments.As<TgArguments>().FileUID = fileUid;
-                    await processor.ActionProcess(session.InputAction, session);
+                    await processor.ActionProcess(session.InputAction, session).ConfigureAwait(false);
 
                     return true;
                 }
@@ -200,7 +198,7 @@ namespace PmEngine.Telegram
                 foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
                 {
                     logger.LogInformation($"CustomLogic after: {s.GetType()} - processing");
-                    if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider))
+                    if (await s.AfterProcessUpdate(update, session, client, logger, serviceProvider).ConfigureAwait(false))
                     {
                         logger.LogInformation($"CustomLogic: {s.GetType()} - OK. Exist.");
                         return true;
@@ -218,13 +216,13 @@ namespace PmEngine.Telegram
             {
                 act.Arguments.As<TgArguments>().ImputMessageId = msg.Id;
                 act.Arguments.As<TgArguments>().Update = update;
-                await processor.ActionProcess(act, session);
+                await processor.ActionProcess(act, session).ConfigureAwait(false);
                 return true;
             }
             else if (text.StartsWith("/"))
             {
                 var cmdmngr = serviceProvider.GetRequiredService<CommandManager>();
-                await cmdmngr.DoCommand(text, session);
+                await cmdmngr.DoCommand(text, session).ConfigureAwait(false);
                 return true;
             }
             else if (session.InputAction != null)
@@ -232,20 +230,20 @@ namespace PmEngine.Telegram
                 session.InputAction.Arguments.As<TgArguments>().ImputMessageId = msg.Id;
                 session.InputAction.Arguments.As<TgArguments>().Update = update;
                 session.InputAction.Arguments.InputData = text;
-                await processor.ActionProcess(session.InputAction, session);
+                await processor.ActionProcess(session.InputAction, session).ConfigureAwait(false);
                 return true;
             }
 
             foreach (var s in serviceProvider.GetServices<ITgCustomLogic>())
             {
                 logger.LogInformation($"CustomLogic after: {s.GetType()} - processing");
-                await s.AfterProcessUpdate(update, session, client, logger, serviceProvider);
+                await s.AfterProcessUpdate(update, session, client, logger, serviceProvider).ConfigureAwait(false);
             }
 
             return false;
         }
 
-        public virtual async Task InlineButtonProcess(Update update, IUserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
+        public virtual async Task InlineButtonProcess(Update update, UserSession session, ITelegramBotClient client, ILogger logger, IServiceProvider serviceProvider)
         {
             var callbackQuery = update.CallbackQuery ?? throw new Exception("Пустой CallbackQuery");
             var chatId = update.CallbackQuery.Message?.Chat.Id ?? 0;
@@ -255,7 +253,7 @@ namespace PmEngine.Telegram
             if (session is null)
                 return;
 
-            var processor = serviceProvider.GetRequiredService<IEngineProcessor>();
+            var processor = serviceProvider.GetRequiredService<IActionProcessor>();
 
             var messageId = update.CallbackQuery.Message.Id;
 
@@ -280,12 +278,12 @@ namespace PmEngine.Telegram
                 msgActType = (int)serviceProvider.GetRequiredService<ITelegramOutputConfigure>().DefaultInLineMessageAction;
 
             if (msgActType == 1)
-                await session.Output.DeleteMessage(messageId);
+                await session.Output.DeleteMessage(messageId).ConfigureAwait(false);
 
             if (msgActType == 2)
             {
                 var btn = callbackQuery.Message.ReplyMarkup.InlineKeyboard.SelectMany(s => s).First(b => b.CallbackData == callbackQuery.Data);
-                await client.EditMessageText(callbackQuery.Message.Chat.Id, messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}");
+                await client.EditMessageText(callbackQuery.Message.Chat.Id, messageId, $"{callbackQuery.Message.Text}\r\n\r\n{btn.Text}").ConfigureAwait(false);
             }
 
             if (msgActType == 3)
@@ -299,9 +297,9 @@ namespace PmEngine.Telegram
             action.Arguments.As<TgArguments>().CallbackQuery = callbackQuery;
 
             if (action.ActionType is not null || !String.IsNullOrEmpty(action.ActionTypeName))
-                await processor.ActionProcess(action, session);
+                await processor.ActionProcess(action, session).ConfigureAwait(false);
 
-            await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.As<TgArguments>().CallbackText, action.Arguments.As<TgArguments>().CallbackAlert, action.Arguments.As<TgArguments>().CallbackURL);
+            await client.AnswerCallbackQuery(update.CallbackQuery.Id, action.Arguments.As<TgArguments>().CallbackText, action.Arguments.As<TgArguments>().CallbackAlert, action.Arguments.As<TgArguments>().CallbackURL).ConfigureAwait(false);
         }
 
         public static WebAppAuthData GetWebAppAuthDataFromString(string data)

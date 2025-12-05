@@ -82,7 +82,7 @@ namespace PmEngine.Telegram
 
         public async Task<int> Send(long chatId, ReplyMarkup? markup = null, int? threadId = null)
         {
-            return (await _sendF(chatId, markup, threadId)).Id;
+            return (await _sendF(chatId, markup, threadId).ConfigureAwait(false)).Id;
         }
     }
 }

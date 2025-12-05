@@ -1,8 +1,6 @@
-﻿using PmEngine.Core.Interfaces;
-
-namespace PmEngine.Telegram.Entities
+﻿namespace PmEngine.Telegram.Entities
 {
-    public class MessageQueueEntity : IDataEntity
+    public class MessageQueueEntity
     {
         public long Id { get; set; }
         public long? ForUserTgId { get; set; }

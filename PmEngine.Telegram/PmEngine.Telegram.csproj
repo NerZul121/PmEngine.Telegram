@@ -29,9 +29,13 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore" Version="2.*" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.*" />
-		<PackageReference Include="PmEngine.Core" Version="2.95.1017.2227" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="PmEngine.Core" Version="2.95.1205.2251" />
 		<PackageReference Include="RamjotSingh.EmojiNet" Version="0.1.0" />
-		<PackageReference Include="Telegram.Bot" Version="22.7.2" />
+		<PackageReference Include="Telegram.Bot" Version="22.7.5" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

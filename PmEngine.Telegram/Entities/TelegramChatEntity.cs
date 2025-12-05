@@ -1,10 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PmEngine.Core.Interfaces;
 
 namespace PmEngine.Telegram.Entities
 {
     [PrimaryKey("ChatId")]
-    public class TelegramChatEntity : IDataEntity
+    public class TelegramChatEntity
     {
         public long ChatId { get; set; }
         public string? ChatTitle { get; set; }

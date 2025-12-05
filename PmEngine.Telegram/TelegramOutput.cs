@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using PmEngine.Core;
 using PmEngine.Core.Extensions;
 using PmEngine.Core.Interfaces;
+using PmEngine.Core.SessionElements;
+using PmEngine.Core.SessionElements;
 using PmEngine.Telegram.Args;
 using PmEngine.Telegram.Daemons;
 using PmEngine.Telegram.Entities;
@@ -25,7 +27,7 @@ namespace PmEngine.Telegram
         private ITelegramBotClient _client { get; set; }
         private bool _useQueue;
 
-        private IUserSession? _user { get; set; }
+        private UserSession? _user { get; set; }
         private IServiceProvider _services;
 
         private long? _tgid;
@@ -35,7 +37,7 @@ namespace PmEngine.Telegram
         /// </summary>
         /// <param name="logger">логгер</param>
         /// <param name="client">телеграммный клиент</param>
-        public TelegramOutput(IUserSession? user, ILogger logger, ITelegramBotClient client, ITelegramOutputConfigure config, IServiceProvider services)
+        public TelegramOutput(UserSession? user, ILogger<TelegramOutput> logger, ITelegramBotClient client, ITelegramOutputConfigure config, IServiceProvider services)
         {
             _logger = logger;
             _client = client;
@@ -51,9 +53,9 @@ namespace PmEngine.Telegram
                 chatId = _tgid;
 
             if (pin)
-                await _client.PinChatMessage(chatId, messageId);
+                await _client.PinChatMessage(chatId, messageId).ConfigureAwait(false);
             else
-                await _client.UnpinChatMessage(chatId, messageId);
+                await _client.UnpinChatMessage(chatId, messageId).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -69,7 +71,7 @@ namespace PmEngine.Telegram
 
             try
             {
-                var kakish = await _client.GetChatMember(chatId, userId.Value);
+                var kakish = await _client.GetChatMember(chatId, userId.Value).ConfigureAwait(false);
                 _logger.LogInformation($"Проверка пользователя {userId} в {chatId}. Результат: {kakish.Status}");
                 return kakish.Status != ChatMemberStatus.Left && kakish.Status != ChatMemberStatus.Kicked;
             }
@@ -89,8 +91,8 @@ namespace PmEngine.Telegram
                 chatId = _tgid;
 
                 if (!string.IsNullOrEmpty(content))
-                    foreach (var tr in _services.GetServices<ITextRefactor>())
-                        content = await tr.Refactoring(content, _user);
+                    foreach (var tr in _services.GetServices<IOutputMutation>())
+                        content = await tr.Mutate(content, _user).ConfigureAwait(false);
             }
 
             if (_useQueue && tgAddionals is not null && !tgAddionals.IgnoreQueue)
@@ -98,23 +100,33 @@ namespace PmEngine.Telegram
                 var message = new MessageQueueEntity()
                 {
                     Text = content,
-                    Actions = nextActions is null ? null : JsonSerializer.Serialize(nextActions),
+                    Actions = nextActions is null ? null : JsonSerializer.Serialize(nextActions.GetNextActions().Select(s => s.Select(a => new ActionWrapperSaveModel(a)).ToList()).ToList()),
                     Media = media is null ? null : JsonSerializer.Serialize(media),
                     Arguments = additionals is null ? null : JsonSerializer.Serialize(additionals)
                 };
 
                 message.ForChatTgId = chatId;
 
-                await _services.InContext(async ctx =>
+                using (var ctx = new TelegramContext(_services.GetRequiredService<PmConfig>()))
                 {
                     ctx.Add(message);
-                    await ctx.SaveChangesAsync();
-                });
+                    await ctx.SaveChangesAsync().ConfigureAwait(false);
+                }
 
                 int id = 0;
+                var timeout = TimeSpan.FromSeconds(30); // Таймаут ожидания сообщения
+                var startTime = DateTime.UtcNow;
 
                 while (!MessagesQueueDaemon.SendedMessages.TryGetValue(message.Id, out id))
+                {
+                    if (DateTime.UtcNow - startTime > timeout)
+                    {
+                        _logger.LogWarning($"Таймаут ожидания сообщения из очереди. MessageId: {message.Id}");
+                        MessagesQueueDaemon.SendedMessages.Remove(message.Id, out _);
+                        return -1;
+                    }
                     await Task.Delay(33);
+                }
 
                 MessagesQueueDaemon.SendedMessages.Remove(message.Id, out _);
 
@@ -131,7 +143,7 @@ namespace PmEngine.Telegram
                     if (update is not null)
                     {
                         var model = new SendMessageModel(update, _client);
-                        return await model.Send(chatId.Value, replyMarkup);
+                        return await model.Send(chatId.Value, replyMarkup).ConfigureAwait(false);
                     }
                 }
                 catch { }
@@ -146,13 +158,14 @@ namespace PmEngine.Telegram
                 if (_user is not null)
                 {
                     var tryupdatechatid = _user.GetLocal<long?>("tryupdatechatid");
+                    var userTgId = _user.TGID();
 
-                    if (tryupdatechatid is not null && chatId == _user.TGID())
+                    if (tryupdatechatid is not null && chatId == userTgId)
                     {
                         try
                         {
                             var tryupdatemessageid = Convert.ToInt32(_user.GetLocal<int?>("tryupdatemessageid"));
-                            await _client.EditMessageText(tryupdatechatid, Convert.ToInt32(tryupdatemessageid), content, ParseMode.Html, replyMarkup: (InlineKeyboardMarkup)replyMarkup);
+                            await _client.EditMessageText(tryupdatechatid, Convert.ToInt32(tryupdatemessageid), content, ParseMode.Html, replyMarkup: (InlineKeyboardMarkup)replyMarkup).ConfigureAwait(false);
                             return tryupdatemessageid;
                         }
                         catch (Exception ex)
@@ -161,7 +174,7 @@ namespace PmEngine.Telegram
                             {
                                 _logger.LogWarning(ex.ToString());
                                 var tryupdatemessageid = Convert.ToInt32(_user.GetLocal<int?>("tryupdatemessageid"));
-                                await _client.DeleteMessage(tryupdatechatid, tryupdatemessageid);
+                                await _client.DeleteMessage(tryupdatechatid, tryupdatemessageid).ConfigureAwait(false);
                             }
                             catch (Exception ex2)
                             {
@@ -174,7 +187,7 @@ namespace PmEngine.Telegram
                     }
                 }
 
-                messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html).ConfigureAwait(false)).MessageId;
                 return messageId;
             }
 
@@ -184,12 +197,12 @@ namespace PmEngine.Telegram
                     var format = media.First().ToString().ToLower();
 
                     if (format.EndsWith("|v") || format.EndsWith(".mp4") || format.EndsWith(".gif"))
-                        messageId = (await _client.SendVideo(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                        messageId = (await _client.SendVideo(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html).ConfigureAwait(false)).MessageId;
                     else
-                        messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                        messageId = (await _client.SendPhoto(chatId, fs, replyMarkup: replyMarkup, caption: content, messageThreadId: theme, parseMode: ParseMode.Html).ConfigureAwait(false)).MessageId;
 
                     return messageId;
-                });
+                }).ConfigureAwait(false);
             else
             {
                 var files = media.Select(m => m.ToString()).Select(GetInputFile).Where(f => f is not null).ToList();
@@ -208,10 +221,10 @@ namespace PmEngine.Telegram
                 }
 
                 if (files.Any())
-                    messageId = (await _client.SendMediaGroup(chatId, files)).Last().MessageId;
+                    messageId = (await _client.SendMediaGroup(chatId, files).ConfigureAwait(false)).Last().MessageId;
 
                 if (!String.IsNullOrEmpty(content))
-                    messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html)).MessageId;
+                    messageId = (await _client.SendMessage(chatId, content, replyMarkup: replyMarkup, messageThreadId: theme, parseMode: ParseMode.Html).ConfigureAwait(false)).MessageId;
 
                 foreach (var str in streams)
                 {
@@ -285,8 +298,8 @@ namespace PmEngine.Telegram
                 chatId = _user.TGID();
 
                 if (!string.IsNullOrEmpty(content))
-                    foreach (var tr in _services.GetServices<ITextRefactor>())
-                        content = await tr.Refactoring(content, _user);
+                    foreach (var tr in _services.GetServices<IOutputMutation>())
+                        content = await tr.Mutate(content, _user).ConfigureAwait(false);
             }
 
             InlineKeyboardMarkup? replyMarkup = null;
@@ -297,12 +310,12 @@ namespace PmEngine.Telegram
                 if (nextActions.InLine)
                 {
                     replyMarkup = new InlineKeyboardMarkup(nextActions.GetNextActions().Select(s => s.Where(a => a.Visible).Select(a => a is InlineButtonActionWrapper ilba ? ilba.Button : (a is WebAppActionWrapper ? InlineKeyboardButton.WithWebApp(a.DisplayName, new WebAppInfo() { Url = ((WebAppActionWrapper)a).Url }) : (a is UrlActionWrapper ? InlineKeyboardButton.WithUrl(a.DisplayName, ((UrlActionWrapper)a).Url) : InlineKeyboardButton.WithCallbackData(a.DisplayName, a.GUID))))));
-                    await _client.EditMessageText(chatId, messageId, content, replyMarkup: replyMarkup, parseMode: ParseMode.Html);
+                    await _client.EditMessageText(chatId, messageId, content, replyMarkup: replyMarkup, parseMode: ParseMode.Html).ConfigureAwait(false);
                     return;
                 }
             }
 
-            await _client.EditMessageText(chatId, messageId, content, parseMode: ParseMode.Html);
+            await _client.EditMessageText(chatId, messageId, content, parseMode: ParseMode.Html).ConfigureAwait(false);
         }
 
         public async Task DeleteMessage(int messageId, long? chatId = null)
@@ -310,7 +323,7 @@ namespace PmEngine.Telegram
             if (chatId == null)
                 chatId = _tgid;
 
-            await _client.DeleteMessage(chatId, messageId);
+            await _client.DeleteMessage(chatId, messageId).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -335,20 +348,20 @@ namespace PmEngine.Telegram
             {
                 if (file.Contains("."))
                     using (var stream = new FileStream(Storage + file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                        await action(new InputFileStream(stream, file.Split('\\').Last()));
+                        await action(new InputFileStream(stream, file.Split('\\').Last())).ConfigureAwait(false);
                 else
                     using (var stream = new MemoryStream(Convert.FromBase64String(file)))
-                        await action(new InputFileStream(stream));
+                        await action(new InputFileStream(stream)).ConfigureAwait(false);
             }
             catch (DirectoryNotFoundException)
             {
                 using (var stream = new FileStream(Storage + "/NotFound.jpg", FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    await action(new InputFileStream(stream, file.Split('\\').Last()));
+                    await action(new InputFileStream(stream, file.Split('\\').Last())).ConfigureAwait(false);
             }
             catch (FileNotFoundException)
             {
                 using (var stream = new FileStream(Storage + "/NotFound.jpg", FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    await action(new InputFileStream(stream, file.Split('\\').Last()));
+                    await action(new InputFileStream(stream, file.Split('\\').Last())).ConfigureAwait(false);
             }
         }
 
@@ -373,7 +386,43 @@ namespace PmEngine.Telegram
             if (chatId is null)
                 return -1;
 
-            return await model.Send(chatId.Value, GetReplyMarkup(nextActions));
+            return await model.Send(chatId.Value, GetReplyMarkup(nextActions)).ConfigureAwait(false);
+        }
+
+        public async void ShowContentSafe(string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Arguments? additionals = null)
+        {
+            try
+            {
+                await ShowContent(content, nextActions, media, additionals).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex.ToString());
+            }
+        }
+
+        public async void EditContentSafe(int messageId, string content, INextActionsMarkup? nextActions = null, IEnumerable<object>? media = null, Arguments? additionals = null)
+        {
+            try
+            {
+                await EditContent(messageId, content, nextActions, media, additionals).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex.ToString());
+            }
+        }
+
+        public async void DeleteMessageSafe(int messageId)
+        {
+            try
+            {
+                await DeleteMessage(messageId).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex.ToString());
+            }
         }
     }
 }

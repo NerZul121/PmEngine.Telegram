@@ -1,11 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PmEngine.Core.Entities;
-using PmEngine.Core.Interfaces;
 
 namespace PmEngine.Telegram.Entities
 {
     [PrimaryKey("TGID")]
-    public class TelegramUserEntity : IDataEntity
+    public class TelegramUserEntity
     {
         public virtual UserEntity Owner { get; set; }
         public long TGID { get; set; }

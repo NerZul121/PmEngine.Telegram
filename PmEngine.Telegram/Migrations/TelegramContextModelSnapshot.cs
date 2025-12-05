@@ -11,13 +11,13 @@ using PmEngine.Telegram;
 namespace PmEngine.Telegram.Migrations
 {
     [DbContext(typeof(TelegramContext))]
-    partial class TelegramMigrationContextModelSnapshot : ModelSnapshot
+    partial class TelegramContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "9.0.11")
                 .HasAnnotation("Proxies:ChangeTracking", false)
                 .HasAnnotation("Proxies:CheckEquality", false)
                 .HasAnnotation("Proxies:LazyLoading", true)
@@ -42,12 +42,41 @@ namespace PmEngine.Telegram.Migrations
                     b.Property<string>("SessionData")
                         .HasColumnType("text");
 
-                    b.Property<int>("UserType")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
-                    b.ToTable("UserEntity");
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("PmEngine.Core.Entities.UserLocalEntity", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Name", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLocals");
+                });
+
+            modelBuilder.Entity("PmEngine.Core.Entities.UserPermissionEntity", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Permission")
+                        .HasColumnType("text");
+
+                    b.HasKey("UserId", "Permission");
+
+                    b.ToTable("UserPermissions");
                 });
 
             modelBuilder.Entity("PmEngine.Telegram.Entities.MessageQueueEntity", b =>
@@ -88,7 +117,7 @@ namespace PmEngine.Telegram.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MessageQueueEntity");
+                    b.ToTable("TgMessagesQueue");
                 });
 
             modelBuilder.Entity("PmEngine.Telegram.Entities.TelegramChatEntity", b =>
@@ -110,7 +139,7 @@ namespace PmEngine.Telegram.Migrations
 
                     b.HasKey("ChatId");
 
-                    b.ToTable("TelegramChatEntity");
+                    b.ToTable("TgChats");
                 });
 
             modelBuilder.Entity("PmEngine.Telegram.Entities.TelegramUserEntity", b =>
@@ -140,7 +169,29 @@ namespace PmEngine.Telegram.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("TelegramUserEntity");
+                    b.ToTable("TgUserData");
+                });
+
+            modelBuilder.Entity("PmEngine.Core.Entities.UserLocalEntity", b =>
+                {
+                    b.HasOne("PmEngine.Core.Entities.UserEntity", "Owner")
+                        .WithMany("Locals")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("PmEngine.Core.Entities.UserPermissionEntity", b =>
+                {
+                    b.HasOne("PmEngine.Core.Entities.UserEntity", "User")
+                        .WithMany("Permissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PmEngine.Telegram.Entities.TelegramUserEntity", b =>
@@ -152,6 +203,13 @@ namespace PmEngine.Telegram.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("PmEngine.Core.Entities.UserEntity", b =>
+                {
+                    b.Navigation("Locals");
+
+                    b.Navigation("Permissions");
                 });
 #pragma warning restore 612, 618
         }
